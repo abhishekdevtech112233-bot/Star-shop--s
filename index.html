@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ <!DOCTYPE html>
 <html lang="hi">
 <head>
   <meta charset="UTF-8">
@@ -73,6 +73,9 @@
       border-top: 1px solid rgba(255, 255, 255, 0.15) !important;
       border-bottom: 1px solid rgba(255, 255, 255, 0.15) !important;
     }
+
+    /* Full-screen reels में app header नहीं दिखेगा */
+    .device-shell.reels-view-active .top-header { display: none !important; }
 
     /* जब नॉर्मल व्हाइट मोड हो */
     .device-shell:not(.high-discount-active) .top-header,
@@ -258,7 +261,44 @@
 
     .tab-screen { display: none; padding: 0 16px 16px 16px; width: 100%; }
     .tab-screen.active { display: block; }
-    #tab-posts { padding: 12px 16px 16px 16px; width: 100%; }
+    #tab-posts { padding: 0; width: 100%; background: #050505 !important; overflow: hidden; }
+
+    /* Dedicated full-screen reels tab */
+    #tab-reels { padding: 0; background: #050505 !important; overflow: hidden; }
+    #tab-reels.active { display: block; }
+    .reels-container { width: 100%; height: calc(100vh - 60px); min-height: 520px; overflow-y: auto; scroll-snap-type: y mandatory; overscroll-behavior-y: contain; background: #050505; scrollbar-width: none; }
+    .reels-container::-webkit-scrollbar { display: none; }
+    .reel-item { position: relative; width: 100%; height: 100%; min-height: 520px; scroll-snap-align: start; scroll-snap-stop: always; overflow: hidden; background: #050505; color: #fff; }
+    .reel-item > video, .reel-item > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #050505; }
+    .reel-item::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to bottom, rgba(0,0,0,.42), transparent 25%, transparent 55%, rgba(0,0,0,.88)); z-index: 1; }
+    .reel-top-controls { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px; right: 14px; display: flex; justify-content: space-between; z-index: 5; }
+    .reel-search-cluster { display: flex; align-items: center; gap: 8px; }
+    .reel-inline-search { display: none; align-items: center; width: min(245px, calc(100vw - 92px)); min-height: 34px; padding: 0 10px; border: 1px solid rgba(255,255,255,.5); border-radius: 18px; background: rgba(255,255,255,.16); box-shadow: 0 8px 26px rgba(0,0,0,.2); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+    .reel-top-controls.search-open .reel-inline-search { display: flex; }
+    .reel-top-controls.search-open .search-trigger { display: none; }
+    .reel-inline-search input { width: 100%; min-width: 0; border: 0; outline: 0; background: transparent; color: #fff; font-size: 12px; font-weight: 700; }
+    .reel-inline-search input::placeholder { color: rgba(255,255,255,.82); }
+    .reel-inline-search .search-submit-icon { width: 20px; height: 20px; flex: 0 0 20px; color: #fff; }
+    .reel-music-trigger.is-playing { color: #FCF6BA; }
+    .top-icon-btn, .action-btn { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: none; }
+    .reel-sketch-icon { width: 22px; height: 22px; display: block; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 0 rgba(255,255,255,.18)); }
+    .top-icon-btn:active, .action-btn:active { transform: scale(.92) rotate(-2deg); }
+    .reel-actions { position: absolute; right: 14px; bottom: 135px; display: flex; flex-direction: column; gap: 24px; z-index: 5; }
+    .action-btn.is-saved { color: #FCF6BA; background: transparent; }
+    .reel-footer { position: absolute; left: 14px; right: 68px; bottom: max(22px, calc(22px + env(safe-area-inset-bottom))); z-index: 5; }
+    .reel-media-play-pause { position: absolute; right: 14px; bottom: 112px; z-index: 6; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 12px; border: 1px solid rgba(255,255,255,.55); border-radius: 20px; background: rgba(0,0,0,.56); color: #fff; font-size: 12px; font-weight: 900; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .reel-media-play-pause .reel-sketch-icon { width: 16px; height: 16px; stroke-width: 2.4; }
+    .reel-media-play-pause.is-playing { color: #FCF6BA; border-color: rgba(252,246,186,.8); }
+    .merchant-profile-row { display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 12px; }
+    .merchant-avatar { width: 44px; height: 44px; flex: 0 0 44px; border-radius: 50%; overflow: hidden; border: 2px solid #D4AF37; background: #111; }
+    .merchant-avatar img { width: 100%; height: 100%; object-fit: cover; }
+    .merchant-details { min-width: 0; }
+    .store-name { color: #fff; font-size: 16px; font-weight: 900; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .store-discount { color: #FCF6BA; font-size: 13px; font-weight: 700; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .map-distance-row { display: inline-flex; align-items: center; gap: 6px; max-width: min(260px, 78vw); padding: 6px 9px; border-radius: 16px; color: #fff; background: rgba(0,0,0,.52); border: 1px solid rgba(255,255,255,.28); font-size: 11px; font-weight: 800; cursor: pointer; backdrop-filter: blur(8px); }
+    .map-distance-row .distance-text { display: block; max-width: 205px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .reels-empty-state { min-height: 100%; display: flex; align-items: center; justify-content: center; padding: 30px; text-align: center; color: #D1D5DB; font-size: 13px; line-height: 1.6; }
+    .device-shell.high-discount-active #tab-reels, .device-shell.high-discount-active .reels-container { background: #050505 !important; }
 
     #dynamicStoresContainer::after, #postsFeedContainer::after, #liveAlertsContainer::after, #tab-profile::after { content: ""; display: block; height: 20px; width: 100%; }
 
@@ -660,9 +700,8 @@
   </main>
 
   <main id="tab-posts" class="tab-screen">
-    <div style="font-size:16px; font-weight:900; color:#111827; margin-bottom: 12px;">📰 मर्चेंट फीड</div>
-    <div id="postsFeedContainer">
-      <div style="font-size:13px; color:#6B7280; text-align:center; padding:30px;">पोस्ट्स लोड हो रही हैं...</div>
+    <div class="reels-container" id="reelsContainer">
+      <div class="reels-empty-state">रील्स लोड हो रही हैं...</div>
     </div>
   </main>
 
@@ -771,7 +810,7 @@
           <circle cx="50" cy="50" r="6" fill="url(#metal3D)" filter="url(#dropShadow)"/>
         </svg>
       </div>
-      <div id="navPostsText">पोस्ट्स</div>
+      <div id="navPostsText">रील्स</div>
     </div>
     
     <div class="nav-item" onclick="switchMainTab('alerts', this)">
@@ -1042,6 +1081,7 @@
   let activeStoreCategory = 'ALL';
   let lastStoresRenderFingerprint = '';
   let lastPostsRenderFingerprint = '';
+  let lastReelsRenderFingerprint = '';
   let realtimeSyncChannel = null;
   let realtimeRefreshTimeout = null;
   let backgroundRefreshPending = false;
@@ -1107,7 +1147,7 @@
     const indicator = document.getElementById('pullRefreshIndicator');
     const indicatorText = document.getElementById('pullRefreshText');
     const isPageAtTop = () => (document.scrollingElement?.scrollTop || window.scrollY || 0) <= 2;
-    const canRefreshCurrentTab = () => ['tab-home', 'tab-alerts', 'tab-posts'].some(id => document.getElementById(id)?.classList.contains('active'));
+    const canRefreshCurrentTab = () => ['tab-home', 'tab-alerts'].some(id => document.getElementById(id)?.classList.contains('active'));
 
     document.addEventListener('touchstart', event => {
       if (isPullRefreshActive || !canRefreshCurrentTab() || !isPageAtTop() || !event.touches.length) return;
@@ -1666,7 +1706,7 @@
     }
     
     try {
-      const catalog = await getSupabaseCatalog();
+      const catalog = await getSupabaseCatalog(Boolean(isSilent));
       const allStores = catalog.merchants || [];
       const allReels = catalog.reels || [];
       const reelsByMerchantId = new Map();
@@ -1770,8 +1810,10 @@
 
       const storesFingerprint = JSON.stringify(liveSupabaseStores.map(({ reels, ...store }) => store));
       const postsFingerprint = JSON.stringify(dynamicPostsList);
+      const reelsFingerprint = JSON.stringify(catalog.reels || []);
       const storesChanged = storesFingerprint !== lastStoresRenderFingerprint;
       const postsChanged = postsFingerprint !== lastPostsRenderFingerprint;
+      const reelsChanged = reelsFingerprint !== lastReelsRenderFingerprint;
 
       if (!isPullRefreshActive) {
         if (document.getElementById('inRangeContent').style.display === 'block' &&
@@ -1780,10 +1822,13 @@
         }
         if (storesChanged) renderDynamicAlerts(liveSupabaseStores);
         if (postsChanged) renderPostsFeed(dynamicPostsList);
+        // Reels/posts view को realtime या scroll से rerender नहीं करना है;
+        // इसे केवल dedicated middle refresh button से manually refresh किया जाएगा।
       }
 
       lastStoresRenderFingerprint = storesFingerprint;
       lastPostsRenderFingerprint = postsFingerprint;
+      lastReelsRenderFingerprint = reelsFingerprint;
 
     } catch (err) { 
         if(!isSilent && container) container.innerHTML = `<div style="font-size:13px; color:#DC2626; text-align:center; padding:30px;">नेटवर्क या Supabase कनेक्शन में समस्या है।</div>`; 
@@ -1867,6 +1912,10 @@
 
   function renderPostsFeed(postsArray, append = false) {
     const container = document.getElementById('postsFeedContainer');
+    if (!container) {
+      renderDedicatedReels(activeReelsSearchQuery);
+      return;
+    }
     if (!append) {
       postsFeedSource = (postsArray || []).filter(post =>
         matchesSelectedArea(post) && (userStepsData.unlockedHighDiscount || !post.isHighDiscount));
@@ -2540,8 +2589,386 @@
     document.querySelectorAll('#merchantGalleryAreaWrapper video').forEach(v => { v.pause(); v.currentTime = 0; });
   }
 
+  let reelsFeedItems = [];
+  let activeReelsSearchQuery = '';
+  let dedicatedReelAudio = null;
+  let dedicatedReelAudioUrl = '';
+  let dedicatedReelMusicStarted = false;
+  let dedicatedReelObserver = null;
+  let dedicatedReelMediaItem = null;
+
+  function escapeReelsHtml(value) {
+    return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  }
+
+  function getDedicatedReelsItems() {
+    const items = [], seen = new Set();
+    const addFromStore = (store, reels) => (reels || []).forEach((reel, index) => {
+      const mediaUrl = getMerchantMediaUrl(reel);
+      if (!mediaUrl) return;
+      const key = `${store?.id || store?.store_name || 'store'}|${mediaUrl}`;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const lat = store?.latitude ?? store?.lat;
+      const lon = store?.longitude ?? store?.lng ?? store?.lon;
+      items.push({ id: String(store?.id || reel.merchant_id || index), reelId: String(reel.id || key), mediaUrl,
+        isVideo: isMerchantVideo(reel, mediaUrl), musicUrl: getPostMusicUrl(reel), storeName: store?.store_name || store?.storeName || 'Star Shops Merchant',
+        discount: cleanReelText(reel.caption || reel.description || store?.offer_details?.discount, 'विशेष ऑफ़र'),
+        avatar: store?.avatar_url || store?.profile_image || store?.display_image || fallbackSalonImages[index % fallbackSalonImages.length],
+        location: compactReelLocation(store?.address || store?.location || store?.city || 'दिल्ली'),
+        distance: compactReelLocation(store?.distance_text || store?.distance || store?.address || 'लोकेशन देखें'), lat: lat == null ? '' : String(lat), lon: lon == null ? '' : String(lon) });
+    });
+    const directReelsByMerchant = new Map();
+    (supabaseCatalogCache.reels || []).forEach(reel => {
+      const key = String(reel.merchant_id ?? '');
+      if (!directReelsByMerchant.has(key)) directReelsByMerchant.set(key, []);
+      directReelsByMerchant.get(key).push(reel);
+    });
+    (searchableSupabaseStores || []).forEach(store => addFromStore(store, directReelsByMerchant.get(String(store.id)) || []));
+    (dynamicPostsList || []).forEach(post => {
+      if (post.post_image) {
+        addFromStore({ ...post, avatar_url: post.avatar }, [{
+          id: post.media_id || `post_${post.id}_${post.post_image}`,
+          url: post.post_image,
+          caption: post.caption,
+          music_url: post.music_url,
+          created_at: post.created_at
+        }]);
+      }
+      addFromStore(post, post.reels);
+    });
+    if (!items.length) (liveSupabaseStores || []).forEach(store => addFromStore(store, store.reels));
+    return items;
+  }
+
+  function getReelItemFromEvent(event) {
+    const item = event?.target?.closest?.('.reel-item');
+    return item ? reelsFeedItems[Number(item.dataset.reelIndex)] : null;
+  }
+
+  function cleanReelText(value, fallback = '') {
+    return String(value || fallback).replace(/\p{Extended_Pictographic}/gu, '').replace(/\s{2,}/g, ' ').trim() || fallback;
+  }
+
+  function compactReelLocation(value) {
+    const clean = cleanReelText(value, 'लोकेशन देखें').replace(/\s*,\s*/g, ', ');
+    const compact = clean.split(',').filter(Boolean).slice(0, 2).join(', ');
+    return compact.length > 32 ? `${compact.slice(0, 31).trim()}…` : compact;
+  }
+
+  function reelSketchIcon(name) {
+    const icons = {
+      search: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.7"></circle><path d="M16 16l5 5"></path></svg>',
+      refresh: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 8.5A8 8 0 0 0 5 6l-2 2"></path><path d="M3 4v4h4"></path><path d="M5 15.5A8 8 0 0 0 19 18l2-2"></path><path d="M21 20v-4h-4"></path></svg>',
+      music: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M17 9l4 6"></path><path d="M21 9l-4 6"></path></svg>',
+      soundOn: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M16 9c2 1.5 2 4.5 0 6"></path><path d="M18.5 6.5c3.5 3 3.5 8 0 11"></path></svg>',
+      soundOff: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M17 9l4 6"></path><path d="M21 9l-4 6"></path></svg>',
+      pause: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14"></path><path d="M17 5v14"></path></svg>',
+      star: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.8 6.2.9-4.5 4.5 1.1 6.3-5.6-3-5.6 3 1.1-6.3L3 9.7l6.2-.9L12 3z"></path></svg>',
+      share: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4L4 11l6 2 2 6 8-15z"></path><path d="M10 13l10-9"></path></svg>',
+      pin: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.2"></circle></svg>',
+      play: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5l10 7-10 7z"></path></svg>'
+    };
+    return icons[name] || '';
+  }
+
+  function renderDedicatedReels(query = activeReelsSearchQuery) {
+    const container = document.getElementById('reelsContainer');
+    if (!container) return;
+    activeReelsSearchQuery = String(query || '').trim();
+    const allItems = getDedicatedReelsItems();
+    const term = activeReelsSearchQuery.toLowerCase();
+    reelsFeedItems = allItems.filter(item => !term || `${item.storeName} ${item.discount} ${item.location}`.toLowerCase().includes(term));
+    if (!reelsFeedItems.length) { dedicatedReelObserver?.disconnect(); stopDedicatedReelMusic(true); container.innerHTML = `<div class="reels-empty-state">${allItems.length ? 'इस सर्च से कोई रील नहीं मिली।' : 'अभी कोई मर्चेंट रील उपलब्ध नहीं है।'}</div>`; return; }
+    container.innerHTML = reelsFeedItems.map((item, index) => {
+      const saved = savedReelsList.some(savedItem => savedItem.mediaUrl === item.mediaUrl || (!savedItem.mediaUrl && savedItem.store === item.storeName && savedItem.offer === item.discount));
+      const media = item.isVideo ? `<video src="${escapeReelsHtml(item.mediaUrl)}" loop muted playsinline preload="metadata"></video>` : `<img src="${escapeReelsHtml(item.mediaUrl)}" alt="${escapeReelsHtml(item.storeName)}">`;
+      return `<div class="reel-item" data-reel-index="${index}" onclick="handleScreenTap(event)">${media}
+        <div class="reel-top-controls ui-element"><div class="reel-search-cluster"><button class="top-icon-btn search-trigger" onclick="openSearchFilter(event)" title="सर्च करें" aria-label="सर्च करें">${reelSketchIcon('search')}</button><div class="reel-inline-search"><input type="search" enterkeyhint="search" value="${escapeReelsHtml(activeReelsSearchQuery)}" placeholder="दुकान या लोकेशन खोजें" onkeydown="submitInlineReelsSearch(event, this)" aria-label="रील्स सर्च"><span class="search-submit-icon">${reelSketchIcon('search')}</span></div></div></div>
+        <div class="reel-actions ui-element"><button class="action-btn ${saved ? 'is-saved' : ''}" onclick="handleSaveClick(event)" ondblclick="saveReel(event)" title="सेव करें" aria-label="सेव करें">${reelSketchIcon('star')}</button><button class="action-btn" onclick="refreshDedicatedReels(event)" title="रील्स रिफ्रेश करें" aria-label="रील्स रिफ्रेश करें">${reelSketchIcon('refresh')}</button><button class="action-btn" onclick="shareReel(event)" title="शेयर करें" aria-label="शेयर करें">${reelSketchIcon('share')}</button></div>
+        <div class="reel-footer ui-element"><div class="merchant-profile-row" onclick="openMerchantProfile('${escapeReelsHtml(item.id)}')"><div class="merchant-avatar"><img src="${escapeReelsHtml(item.avatar)}" alt="Store"></div><div class="merchant-details"><h3 class="store-name">${escapeReelsHtml(item.storeName)}</h3><p class="store-discount">${escapeReelsHtml(item.discount)}</p></div></div>
+          <div class="map-distance-row" onclick="openGoogleMap('${escapeReelsHtml(item.lat)}', '${escapeReelsHtml(item.lon)}')"><span class="map-pin-icon">${reelSketchIcon('pin')}</span><span class="distance-text">${escapeReelsHtml(item.distance)} (मैप खोलें)</span></div></div></div>`;
+    }).join('');
+    initDedicatedReelObserver();
+  }
+
+  function ensureDedicatedReelAudio() {
+    if (!dedicatedReelAudio) {
+      dedicatedReelAudio = new Audio();
+      dedicatedReelAudio.preload = 'auto';
+      dedicatedReelAudio.loop = true;
+      dedicatedReelAudio.volume = 0.9;
+      dedicatedReelAudio.onerror = function() {
+        console.log('Audio playback error or invalid source.');
+        dedicatedReelMusicStarted = false;
+        dedicatedReelAudioUrl = '';
+        updateDedicatedSoundButtons(false);
+      };
+      dedicatedReelAudio.onplay = () => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'playing'; };
+      dedicatedReelAudio.onpause = () => { if ('mediaSession' in navigator) navigator.mediaSession.playbackState = 'paused'; };
+    }
+    return dedicatedReelAudio;
+  }
+
+  function configureDedicatedMediaSession(item) {
+    if (!('mediaSession' in navigator) || typeof MediaMetadata === 'undefined') return;
+    dedicatedReelMediaItem = item || null;
+    navigator.mediaSession.metadata = item ? new MediaMetadata({
+      title: item.storeName || 'Star Shops Reel',
+      artist: item.discount || 'Star Shops',
+      album: 'Star Shops Reels',
+      artwork: item.avatar ? [{ src: item.avatar, sizes: '512x512', type: 'image/jpeg' }] : []
+    }) : null;
+    const actions = {
+      play: () => { dedicatedReelMusicStarted = true; syncDedicatedReelMusic(dedicatedReelMediaItem); },
+      pause: () => { dedicatedReelMusicStarted = false; stopDedicatedReelMusic(false); },
+      stop: () => { dedicatedReelMusicStarted = false; stopDedicatedReelMusic(false); }
+    };
+    Object.entries(actions).forEach(([action, handler]) => { try { navigator.mediaSession.setActionHandler(action, handler); } catch (_) {} });
+  }
+
+  function clearDedicatedMediaSession() {
+    if (!('mediaSession' in navigator)) return;
+    try { navigator.mediaSession.metadata = null; navigator.mediaSession.playbackState = 'none'; } catch (_) {}
+  }
+
+  function stopDedicatedReelMusic(resetTrigger = false) {
+    if (dedicatedReelAudio) {
+      dedicatedReelAudio.pause();
+      dedicatedReelAudio.removeAttribute('src');
+      dedicatedReelAudio.load();
+    }
+    dedicatedReelAudioUrl = '';
+    dedicatedReelMediaItem = null;
+    if (resetTrigger) dedicatedReelMusicStarted = false;
+    updateDedicatedSoundButtons(false);
+    clearDedicatedMediaSession();
+  }
+
+  function updateDedicatedSoundButtons(isOn) {
+    document.querySelectorAll('.reel-sound-toggle').forEach(button => {
+      button.classList.toggle('is-playing', Boolean(isOn));
+      button.innerHTML = reelSketchIcon(isOn ? 'soundOn' : 'soundOff');
+      button.setAttribute('aria-label', isOn ? 'Sound Off' : 'Sound On');
+      button.title = isOn ? 'Sound Off' : 'Sound On';
+    });
+    updateReelMusicPlayPauseButtons(isOn);
+  }
+
+  function updateReelMusicPlayPauseButtons(isOn) {
+    document.querySelectorAll('.reel-media-play-pause').forEach(button => {
+      button.classList.toggle('is-playing', Boolean(isOn));
+      const icon = button.querySelector('.reel-play-pause-icon');
+      const label = button.querySelector('.reel-play-pause-label');
+      if (icon) icon.innerHTML = reelSketchIcon(isOn ? 'pause' : 'play');
+      if (label) label.textContent = isOn ? 'पॉज़' : 'प्ले';
+      button.setAttribute('aria-label', isOn ? 'म्यूजिक पॉज़ करें' : 'म्यूजिक प्ले करें');
+    });
+  }
+
+  function syncDedicatedReelMusic(item, restart = false) {
+    if (!dedicatedReelMusicStarted) return;
+    if (!item?.musicUrl) { stopDedicatedReelMusic(false); return; }
+    const audio = ensureDedicatedReelAudio();
+
+    let safeUrl = item.musicUrl;
+    try {
+      const parsed = new URL(safeUrl, window.location.href);
+      if (parsed.protocol !== 'https:') { stopDedicatedReelMusic(false); return; }
+      safeUrl = parsed.href;
+    } catch (_) {
+      stopDedicatedReelMusic(false);
+      return;
+    }
+
+    if (!restart && dedicatedReelAudioUrl === safeUrl && !audio.paused) {
+      configureDedicatedMediaSession(item);
+      return;
+    }
+    audio.pause();
+    dedicatedReelAudioUrl = safeUrl;
+    configureDedicatedMediaSession(item);
+    audio.src = safeUrl;
+    audio.load();
+    const playPromise = audio.play();
+    if (playPromise !== undefined) {
+      playPromise.then(() => {
+        updateDedicatedSoundButtons(true);
+      }).catch(error => {
+        console.log('Autoplay blocked by browser policy, waiting for user interaction:', error);
+        dedicatedReelMusicStarted = false;
+        dedicatedReelAudioUrl = '';
+        updateDedicatedSoundButtons(false);
+      });
+    }
+  }
+
+  function initDedicatedReelObserver() {
+    if (dedicatedReelObserver) dedicatedReelObserver.disconnect();
+    const container = document.getElementById('reelsContainer');
+    if (!container || !window.IntersectionObserver) return;
+    dedicatedReelObserver = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        const reelItem = entry.target;
+        const video = reelItem.querySelector('video');
+        const item = reelsFeedItems[Number(reelItem.dataset.reelIndex)];
+
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+          reelItem.classList.add('reel-media-playing');
+          if (video) {
+            video.muted = false;
+            video.play().catch(() => {});
+          }
+          if (item?.musicUrl && dedicatedReelMusicStarted) {
+            syncDedicatedReelMusic(item, true);
+          }
+        } else {
+          reelItem.classList.remove('reel-media-playing');
+          if (video) {
+            video.pause();
+            video.currentTime = 0;
+          }
+          if (item?.musicUrl && dedicatedReelAudioUrl === item.musicUrl) {
+            stopDedicatedReelMusic(false);
+          }
+        }
+      });
+    }, { root: container, threshold: [0.65] });
+    container.querySelectorAll('.reel-item').forEach(reel => dedicatedReelObserver.observe(reel));
+  }
+
+  function toggleDedicatedReelMusic(event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const reelItem = event.target.closest('.reel-item');
+    if (!reelItem) return;
+    const videoElement = reelItem.querySelector('video');
+    const soundButton = reelItem.querySelector('.reel-sound-toggle');
+    if (videoElement) {
+      if (videoElement.muted) {
+        videoElement.muted = false;
+        videoElement.play().then(() => {
+          console.log('Video unmuted and playing with sound.');
+          if (soundButton) {
+            soundButton.classList.add('is-playing');
+            soundButton.innerHTML = reelSketchIcon('soundOn');
+          }
+        }).catch(err => console.log('Playback error:', err));
+      } else {
+        videoElement.muted = true;
+        if (soundButton) {
+          soundButton.classList.remove('is-playing');
+          soundButton.innerHTML = reelSketchIcon('soundOff');
+        }
+      }
+    }
+    const item = getReelItemFromEvent(event);
+    if (item?.musicUrl) {
+      if (dedicatedReelMusicStarted && dedicatedReelAudioUrl === item.musicUrl && dedicatedReelAudio && !dedicatedReelAudio.paused) {
+        dedicatedReelMusicStarted = false;
+        stopDedicatedReelMusic(false);
+      } else {
+        dedicatedReelMusicStarted = true;
+        syncDedicatedReelMusic(item, true);
+      }
+    }
+  }
+
+  function toggleReelMusicPlayPause(event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const item = getReelItemFromEvent(event);
+    if (!item?.musicUrl) return;
+    const audio = ensureDedicatedReelAudio();
+    const safeUrl = dedicatedReelAudioUrl;
+    if (dedicatedReelMusicStarted && safeUrl === item.musicUrl && !audio.paused) {
+      dedicatedReelMusicStarted = false;
+      stopDedicatedReelMusic(false);
+      return;
+    }
+    dedicatedReelMusicStarted = true;
+    syncDedicatedReelMusic(item, safeUrl !== item.musicUrl);
+  }
+
+  function recycleReel(event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const reel = event?.target?.closest?.('.reel-item');
+    const video = reel?.querySelector('video');
+    if (video) { video.currentTime = 0; video.play().catch(() => {}); }
+    const item = getReelItemFromEvent(event);
+    if (dedicatedReelMusicStarted) syncDedicatedReelMusic(item, true);
+  }
+
+  function handleScreenTap(event) {
+    if (event.target.closest('.ui-element')) return;
+    const reel = event.currentTarget;
+    const video = reel?.querySelector('video');
+    if (video) {
+      if (video.paused) {
+        video.muted = false;
+        video.play().catch(() => {});
+        reel.classList.add('reel-media-playing');
+      } else {
+        video.pause();
+        reel.classList.remove('reel-media-playing');
+      }
+    }
+  }
+
+  function openSearchFilter(event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const controls = event?.target?.closest?.('.reel-top-controls');
+    if (!controls) return;
+    controls.classList.add('search-open');
+    const input = controls.querySelector('.reel-inline-search input');
+    if (input) { input.focus(); input.select(); }
+  }
+  function submitInlineReelsSearch(event, input) {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    const query = input?.value || '';
+    input?.blur();
+    renderDedicatedReels(query);
+  }
+  function resetSearchFilter(event) { if (event) { event.preventDefault(); event.stopPropagation(); } renderDedicatedReels(''); }
+  async function refreshDedicatedReels(event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const button = event?.target?.closest?.('.reel-actions .action-btn');
+    if (button) {
+      button.disabled = true;
+      button.classList.add('is-refreshing');
+    }
+    try {
+      stopDedicatedReelMusic(true);
+      await fetchLiveMerchantsFromSupabase(true);
+      renderDedicatedReels(activeReelsSearchQuery);
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.classList.remove('is-refreshing');
+      }
+    }
+  }
+  function handleSaveClick(event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const item = getReelItemFromEvent(event); if (!item) return;
+    const savedIndex = savedReelsList.findIndex(saved => saved.mediaUrl === item.mediaUrl || (!saved.mediaUrl && saved.store === item.storeName && saved.offer === item.discount));
+    if (savedIndex >= 0) savedReelsList.splice(savedIndex, 1); else savedReelsList.unshift({ key: `dedicated_reel_${item.reelId}`, store: item.storeName, location: item.location, offer: item.discount, mediaUrl: item.mediaUrl, expires: 'आज रात 12:00 बजे' });
+    localStorage.setItem('starshops_saved_deals', JSON.stringify(savedReelsList)); renderDedicatedReels(activeReelsSearchQuery);
+  }
+  function saveReel(event) { handleSaveClick(event); }
+  async function shareReel(event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const item = getReelItemFromEvent(event); if (!item) return;
+    const text = `🔥 ${item.storeName} का ऑफ़र: ${item.discount}\n${item.mediaUrl}`;
+    try { if (navigator.share) await navigator.share({ title: `Star Shops - ${item.storeName}`, text, url: window.location.href }); else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(`${text}\n${window.location.href}`); openSuccessModal('शेयर लिंक कॉपी हो गया', 'रील का लिंक क्लिपबोर्ड में कॉपी हो गया है।'); } } catch (error) { if (error?.name !== 'AbortError') openSuccessModal('शेयर नहीं हो सका', 'कृपया दोबारा कोशिश करें।'); }
+  }
+  function openMerchantProfile(merchantId) { openMerchantPublicProfileById(merchantId); }
+  function openGoogleMap(latitude, longitude) { if (latitude && longitude) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(latitude)},${encodeURIComponent(longitude)}`, '_blank', 'noopener'); else openLocationSearch(); }
+
   function switchMainTab(tabName, clickedNavItem) {
     if (activePostMusicAudio) stopPostMusic();
+    document.querySelectorAll('#reelsContainer video').forEach(video => video.pause());
+    stopDedicatedReelMusic(true);
+    document.getElementById('appDeviceShell')?.classList.toggle('reels-view-active', tabName === 'posts');
     document.querySelectorAll('.tab-screen').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
     
@@ -2550,7 +2977,9 @@
     if (tabName === 'alerts') markVisibleAlertsAsSeen();
     if (tabName === 'profile') loadLocalUserStats();
     window.scrollTo(0, 0);
-    if (tabName === 'posts') updatePostsPreloadObserver();
+    if (tabName === 'posts') {
+      renderDedicatedReels(activeReelsSearchQuery);
+    }
   }
 
   function updateLiveSavingsDetector() {
@@ -2890,6 +3319,7 @@
 
   // 🚨 NEW: Block Browser Default Media Notification Player 🚨
   document.addEventListener('play', function(e) {
+    if (e.target === dedicatedReelAudio) return;
     if (e.target.tagName === 'VIDEO' || e.target.tagName === 'AUDIO') {
       if ('mediaSession' in navigator) {
         navigator.mediaSession.metadata = new MediaMetadata({ title: '', artist: '', album: '' });
