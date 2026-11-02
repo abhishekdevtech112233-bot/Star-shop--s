@@ -1,6 +1,6 @@
 {
-  "name": "Star Merchant Shop",
-  "short_name": "Star Merchant",
+  "name": "Star Shop",
+  "short_name": "Star Shop",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
