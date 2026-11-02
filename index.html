@@ -1,4 +1,4 @@
- <!DOCTYPE html>
+   <!DOCTYPE html>
 <html lang="hi">
 <head>
   <meta charset="UTF-8">
@@ -283,7 +283,17 @@
     .top-icon-btn, .action-btn { width: 32px; height: 32px; padding: 0; border: 0; border-radius: 0; background: transparent; color: #fff; display: flex; align-items: center; justify-content: center; cursor: pointer; backdrop-filter: none; }
     .reel-sketch-icon { width: 22px; height: 22px; display: block; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; filter: drop-shadow(0 1px 0 rgba(255,255,255,.18)); }
     .top-icon-btn:active, .action-btn:active { transform: scale(.92) rotate(-2deg); }
-    .reel-actions { position: absolute; right: 14px; bottom: 135px; display: flex; flex-direction: column; gap: 24px; z-index: 5; }
+    .reel-actions .action-btn { width: 38px; height: 38px; }
+    .reel-actions .action-btn .reel-sketch-icon { width: 29px; height: 29px; }
+    .reel-actions {
+      position: absolute;
+      right: 14px;
+      bottom: 96px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      z-index: 5;
+    }
     .action-btn.is-saved { color: #FCF6BA; background: transparent; }
     .reel-footer { position: absolute; left: 14px; right: 68px; bottom: max(22px, calc(22px + env(safe-area-inset-bottom))); z-index: 5; }
     .reel-media-play-pause { position: absolute; right: 14px; bottom: 112px; z-index: 6; display: inline-flex; align-items: center; gap: 6px; min-height: 34px; padding: 6px 12px; border: 1px solid rgba(255,255,255,.55); border-radius: 20px; background: rgba(0,0,0,.56); color: #fff; font-size: 12px; font-weight: 900; cursor: pointer; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
@@ -2687,7 +2697,7 @@
         <div class="reel-top-controls ui-element"><div class="reel-search-cluster"><button class="top-icon-btn search-trigger" onclick="openSearchFilter(event)" title="सर्च करें" aria-label="सर्च करें">${reelSketchIcon('search')}</button><div class="reel-inline-search"><input type="search" enterkeyhint="search" value="${escapeReelsHtml(activeReelsSearchQuery)}" placeholder="दुकान या लोकेशन खोजें" onkeydown="submitInlineReelsSearch(event, this)" aria-label="रील्स सर्च"><span class="search-submit-icon">${reelSketchIcon('search')}</span></div></div></div>
         <div class="reel-actions ui-element"><button class="action-btn ${saved ? 'is-saved' : ''}" onclick="handleSaveClick(event)" ondblclick="saveReel(event)" title="सेव करें" aria-label="सेव करें">${reelSketchIcon('star')}</button><button class="action-btn" onclick="refreshDedicatedReels(event)" title="रील्स रिफ्रेश करें" aria-label="रील्स रिफ्रेश करें">${reelSketchIcon('refresh')}</button><button class="action-btn" onclick="shareReel(event)" title="शेयर करें" aria-label="शेयर करें">${reelSketchIcon('share')}</button></div>
         <div class="reel-footer ui-element"><div class="merchant-profile-row" onclick="openMerchantProfile('${escapeReelsHtml(item.id)}')"><div class="merchant-avatar"><img src="${escapeReelsHtml(item.avatar)}" alt="Store"></div><div class="merchant-details"><h3 class="store-name">${escapeReelsHtml(item.storeName)}</h3><p class="store-discount">${escapeReelsHtml(item.discount)}</p></div></div>
-          <div class="map-distance-row" onclick="openGoogleMap('${escapeReelsHtml(item.lat)}', '${escapeReelsHtml(item.lon)}')"><span class="map-pin-icon">${reelSketchIcon('pin')}</span><span class="distance-text">${escapeReelsHtml(item.distance)} (मैप खोलें)</span></div></div></div>`;
+          <div class="map-distance-row" onclick="openGoogleMap('${escapeReelsHtml(item.lat)}', '${escapeReelsHtml(item.lon)}', '${escapeReelsHtml(item.location)}')"><span class="map-pin-icon">${reelSketchIcon('pin')}</span><span class="distance-text">${escapeReelsHtml(item.distance)} (मैप खोलें)</span></div></div></div>`;
     }).join('');
     initDedicatedReelObserver();
   }
@@ -2962,7 +2972,15 @@
     try { if (navigator.share) await navigator.share({ title: `Star Shops - ${item.storeName}`, text, url: window.location.href }); else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(`${text}\n${window.location.href}`); openSuccessModal('शेयर लिंक कॉपी हो गया', 'रील का लिंक क्लिपबोर्ड में कॉपी हो गया है।'); } } catch (error) { if (error?.name !== 'AbortError') openSuccessModal('शेयर नहीं हो सका', 'कृपया दोबारा कोशिश करें।'); }
   }
   function openMerchantProfile(merchantId) { openMerchantPublicProfileById(merchantId); }
-  function openGoogleMap(latitude, longitude) { if (latitude && longitude) window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(latitude)},${encodeURIComponent(longitude)}`, '_blank', 'noopener'); else openLocationSearch(); }
+  function openGoogleMap(latitude, longitude, address = '') {
+    const hasCoordinates = latitude && longitude && !isNaN(parseFloat(latitude)) && !isNaN(parseFloat(longitude));
+    const query = hasCoordinates ? `${parseFloat(latitude)},${parseFloat(longitude)}` : String(address || '').trim();
+    if (!query) { openLocationSearch(); return; }
+    const mapsUrl = hasCoordinates
+      ? `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(query)}`
+      : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(query)}`;
+    window.open(mapsUrl, '_blank', 'noopener,noreferrer');
+  }
 
   function switchMainTab(tabName, clickedNavItem) {
     if (activePostMusicAudio) stopPostMusic();
