@@ -679,15 +679,14 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
+    // APK या PWA में पुराना सर्विस वर्कर हटाकर नया वर्जन फोर्सफुली लोड करने का लॉजिक
     if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('./sw.js')
-          .then((registration) => {
-            console.log('ServiceWorker registration successful with scope: ', registration.scope);
-          })
-          .catch((error) => {
-            console.log('ServiceWorker registration failed: ', error);
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister().then(function(boolean) {
+            console.log("Old Service Worker unregistered:", boolean);
           });
+        }
       });
     }
   </script>
@@ -2751,7 +2750,18 @@
     const term = activeReelsSearchQuery.toLowerCase();
     const filteredItems = allItems.filter(item => !term || `${item.storeName} ${item.discount} ${item.location}`.toLowerCase().includes(term));
     reelsFeedItems = filteredItems.slice(0, reelsVisibleCount);
-    if (!reelsFeedItems.length) { dedicatedReelObserver?.disconnect(); stopDedicatedReelMusic(true); container.innerHTML = `<div class="reels-empty-state">${allItems.length ? 'इस सर्च से कोई रील नहीं मिली।' : 'अभी कोई मर्चेंट रील उपलब्ध नहीं है।'}</div>`; dedicatedReelsInitialized = true; return; }
+    if (!reelsFeedItems.length) {
+      dedicatedReelObserver?.disconnect();
+      stopDedicatedReelMusic(true);
+      const emptyMessage = allItems.length ? 'इस सर्च से कोई रील नहीं मिली।' : 'अभी कोई मर्चेंट रील उपलब्ध नहीं है।';
+      container.innerHTML = `<div class="reel-item reel-empty-result">
+        <div class="reel-top-controls ui-element"><div class="reel-search-cluster"><button class="top-icon-btn search-trigger" onclick="openSearchFilter(event)" title="सर्च करें" aria-label="सर्च करें">${reelSketchIcon('search')}</button><div class="reel-inline-search"><input type="search" enterkeyhint="search" value="${escapeReelsHtml(activeReelsSearchQuery)}" placeholder="दुकान या लोकेशन खोजें" onkeydown="submitInlineReelsSearch(event, this)" aria-label="रील्स सर्च"><span class="search-submit-icon">${reelSketchIcon('search')}</span></div></div></div>
+        <div class="reels-empty-state">${emptyMessage}</div>
+        <div class="reel-actions-bar ui-element"><button class="action-btn star-rating-btn" type="button" disabled aria-disabled="true" title="रेटिंग के लिए रील उपलब्ध नहीं">${reelSketchIcon('star')}<span class="label-text">रेटिंग</span></button><button class="action-btn" type="button" onclick="refreshReelContent(event)" title="फ़िल्टर हटाकर रील्स दिखाएँ" aria-label="फ़िल्टर हटाकर रील्स दिखाएँ">${reelSketchIcon('refresh')}<span class="label-text">रीसेट</span></button><button class="action-btn" type="button" disabled aria-disabled="true" title="शेयर करने के लिए रील उपलब्ध नहीं">${reelSketchIcon('share')}<span class="label-text">शेयर</span></button><button class="action-btn lock-save-btn" type="button" disabled aria-disabled="true" title="सेव करने के लिए रील उपलब्ध नहीं"><span class="lock-icon">${reelSketchIcon('unlock')}</span><span class="label-text">सुरक्षित</span></button></div>
+      </div>`;
+      dedicatedReelsInitialized = true;
+      return;
+    }
     container.innerHTML = reelsFeedItems.map((item, index) => {
       const saved = savedReelsList.some(savedItem => savedItem.mediaUrl === item.mediaUrl || (!savedItem.mediaUrl && savedItem.store === item.storeName && savedItem.offer === item.discount));
       const media = item.isVideo ? `<video src="${escapeReelsHtml(item.mediaUrl)}" preload="auto" playsinline autoplay muted loop></video>` : `<img src="${escapeReelsHtml(item.mediaUrl)}" alt="${escapeReelsHtml(item.storeName)}">`;
@@ -3060,12 +3070,17 @@
     if (input) { input.focus(); input.select(); }
   }
   function submitInlineReelsSearch(event, input) {
-    if (event.key !== 'Enter') return;
+    const isSearchSubmit = ['Enter', 'Search', 'Go'].includes(event.key) || event.keyCode === 13;
+    if (!isSearchSubmit) return;
     event.preventDefault();
+    event.stopPropagation();
     const query = input?.value || '';
     input?.blur();
     reelsVisibleCount = reelsBatchSize;
+    const reelsContainer = document.getElementById('reelsContainer');
+    if (reelsContainer) reelsContainer.scrollTop = 0;
     renderDedicatedReels(query);
+    if (reelsContainer) requestAnimationFrame(() => { reelsContainer.scrollTop = 0; });
   }
   function resetSearchFilter(event) { if (event) { event.preventDefault(); event.stopPropagation(); } reelsVisibleCount = reelsBatchSize; renderDedicatedReels(''); }
   async function refreshDedicatedReels(event) {
@@ -3088,7 +3103,7 @@
       }
     }
   }
-  function refreshReelContent(event) { return refreshDedicatedReels(event); }
+  function refreshReelContent(event) { return resetSearchFilter(event); }
   function shareReelContent(event) { return shareReel(event); }
   function reelInteractionKey(item) { return String(item?.reelId || item?.mediaUrl || ''); }
   function formatCompactCount(value) {
@@ -3558,6 +3573,48 @@
       }
     }
   }, true);
+
+
+
+  // ऐप बैकग्राउंड में सिर्फ नया वर्जन चेक करेगा, रील्स या वीडियो को बिल्कुल डिस्टर्ब नहीं करेगा
+  async function checkAppVersionSilently() {
+    try {
+      // 1. मान लेते हैं कि सर्वर पर एक छोटी सी फाइल या वर्जन स्टोर है (जैसे version.json)
+      const response = await fetch('./version.json?t=' + new Date().getTime());
+      if (!response.ok) return;
+
+      const serverData = await response.json();
+      const serverVersion = serverData.version; // जैसे "v3"
+
+      // 2. यूजर के ब्राउज़र (localStorage) में सेव पुराना वर्जन चेक करो
+      const localVersion = localStorage.getItem('star_shop_app_version');
+
+      // 3. अगर सर्वर पर नया वर्जन आया है
+      if (localVersion !== serverVersion) {
+        console.log("New version detected on server:", serverVersion);
+
+        // नया वर्जन लोकल स्टोरेज में सेव कर लो
+        localStorage.setItem('star_shop_app_version', serverVersion);
+
+        // पुराना सर्विस वर्कर कैच साफ़ कर दो ताकि अगली बार खुलने पर नया माल मिले
+        if ('caches' in window) {
+          const cacheNames = await caches.keys();
+          await Promise.all(cacheNames.map(name => caches.delete(name)));
+        }
+
+        console.log("Background cache updated to new version silently.");
+      } else {
+        console.log("App is already up-to-date.");
+      }
+    } catch (error) {
+      console.log("Version check skipped (Offline or network issue).", error);
+    }
+  }
+
+  // ऐप लोड होते ही यह चुपचाप बैकग्राउंड में सिर्फ वर्जन चेक करेगा
+  window.addEventListener('load', () => {
+    checkAppVersionSilently();
+  });
 
 </script>
 </body>
