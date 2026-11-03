@@ -285,6 +285,31 @@
     .top-icon-btn:active, .action-btn:active { transform: scale(.92) rotate(-2deg); }
     .reel-actions .action-btn { width: 38px; height: 38px; }
     .reel-actions .action-btn .reel-sketch-icon { width: 29px; height: 29px; }
+    .reel-actions-bar { position: absolute; right: 14px; bottom: 48px; display: flex; flex-direction: column; align-items: center; gap: 18px; z-index: 20; }
+    .reel-actions-bar .action-btn { background: transparent; border: 0; border-radius: 0; width: 52px; height: 52px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; color: #fff; cursor: pointer; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; transition: transform .25s ease, color .25s ease; }
+    .reel-actions-bar .action-btn:active { transform: scale(.85); }
+    .reel-actions-bar .action-btn .reel-sketch-icon { width: 24px; height: 24px; }
+    .reel-actions-bar .star-icon-wrapper { display: inline-block; transition: transform .6s cubic-bezier(.4,0,.2,1); line-height: 1; }
+    .reel-actions-bar .star-icon-wrapper.spin { transform: rotate(360deg) scale(1.3); }
+    .reel-actions-bar .label-text { font-size: 8.5px; margin-top: 1px; font-weight: 500; line-height: 1; color: #e2e8f0; }
+    .reel-actions-bar .count { font-size: 9.5px; line-height: 1; font-weight: 700; color: #ffd700; }
+    .reel-actions-bar .rating-status { display: flex; flex-direction: column; align-items: center; gap: 1px; margin-top: 1px; }
+    .reel-actions-bar .rating-status .count { font-size: 8px; color: #e2e8f0; white-space: nowrap; }
+    .reel-actions-bar .rating-status .total-like-count { color: #fff; }
+    .reel-actions-bar .star-rating-btn.rated { background: transparent; border: 0; color: #fff; box-shadow: none; }
+    .reel-actions-bar .star-rating-btn .star-icon-wrapper.rating-flash { animation: reelRatingFlash 1.2s ease-out forwards; }
+    @keyframes reelRatingFlash { 0% { color: #fff; filter: none; transform: scale(1); } 35% { color: #fff; filter: drop-shadow(0 0 10px rgba(255,255,255,.98)); transform: scale(1.18); } 62% { color: #fff; filter: drop-shadow(0 0 6px rgba(255,255,255,.75)); transform: scale(1.08); } 100% { color: #fff; filter: none; transform: scale(1); } }
+    .reel-actions-bar .lock-save-btn.locked, .reel-actions-bar .lock-save-btn.is-saved { background: transparent; border: 0; color: #ffd700; box-shadow: none; }
+    .reel-actions-bar .lock-save-btn.locked .reel-sketch-icon { filter: drop-shadow(0 0 8px #ffd700); }
+    .reel-actions-bar .lock-save-btn.locked .reel-sketch-icon { transform: scale(1.2) rotate(-10deg); }
+    .reel-actions-bar .action-btn.is-refreshing .reel-sketch-icon { animation: reelRefreshSpin .75s linear infinite; }
+    @keyframes reelRefreshSpin { to { transform: rotate(360deg); } }
+    .lock-success-popup { position: fixed; top: 15%; left: 50%; z-index: 9999; width: min(320px, calc(100vw - 32px)); padding: 12px 20px; border: 1px solid rgba(255,204,0,.4); border-radius: 20px; background: rgba(15,23,42,.9); backdrop-filter: blur(16px); color: #fff; box-shadow: 0 15px 35px rgba(0,0,0,.6); opacity: 0; pointer-events: none; transform: translateX(-50%) translateY(-30px) scale(.9); transition: all .4s cubic-bezier(.175,.885,.32,1.275); }
+    .lock-success-popup.show { transform: translateX(-50%) translateY(0) scale(1); opacity: 1; }
+    .lock-popup-content { display: flex; align-items: center; gap: 12px; }
+    .popup-emoji { font-size: 28px; }
+    .popup-text strong { font-size: 13px; color: #ffcc00; display: block; }
+    .popup-text p { font-size: 11px; color: #cbd5e1; margin: 0; }
     .reel-actions {
       position: absolute;
       right: 14px;
@@ -713,6 +738,9 @@
     <div class="reels-container" id="reelsContainer">
       <div class="reels-empty-state">रील्स लोड हो रही हैं...</div>
     </div>
+    <div id="lock-popup" class="lock-success-popup" role="status" aria-live="polite">
+      <div class="lock-popup-content"><span class="popup-emoji">🔐</span><div class="popup-text"><strong>ऑफ़र सुरक्षित हुआ!</strong><p>आपकी तिजोरी में ताला लगा दिया गया है</p></div></div>
+    </div>
   </main>
 
   <main id="tab-alerts" class="tab-screen">
@@ -1092,6 +1120,7 @@
   let lastStoresRenderFingerprint = '';
   let lastPostsRenderFingerprint = '';
   let lastReelsRenderFingerprint = '';
+  let dedicatedReelsInitialized = false;
   let realtimeSyncChannel = null;
   let realtimeRefreshTimeout = null;
   let backgroundRefreshPending = false;
@@ -1718,7 +1747,8 @@
     try {
       const catalog = await getSupabaseCatalog(Boolean(isSilent));
       const allStores = catalog.merchants || [];
-      const allReels = catalog.reels || [];
+      appendUniqueReelBatch(dedicatedReelMediaAppendCache, catalog.reels || [], reel => `${reel?.merchant_id || ''}|${getMerchantMediaUrl(reel) || reel?.id || ''}`);
+      const allReels = dedicatedReelMediaAppendCache;
       const reelsByMerchantId = new Map();
       allReels.forEach(reel => {
         const key = String(reel.merchant_id);
@@ -1794,6 +1824,8 @@
         }
       });
 
+      appendUniqueReelBatch(dedicatedReelPostAppendCache, dynamicPostsList, post => `${post?.id || ''}|${post?.post_image || post?.media_id || ''}`);
+
       dynamicPostsList = dynamicPostsList.map((post, order) => ({ ...post, _feedOrder: order }));
       dynamicPostsList.sort((a, b) => {
         const aTime = Date.parse(a.created_at || '');
@@ -1824,6 +1856,11 @@
       const storesChanged = storesFingerprint !== lastStoresRenderFingerprint;
       const postsChanged = postsFingerprint !== lastPostsRenderFingerprint;
       const reelsChanged = reelsFingerprint !== lastReelsRenderFingerprint;
+
+      // Feed और Reels को background में एक बार तैयार रखें; tab बदलने पर remount न करें।
+      if (!dedicatedReelsInitialized && document.getElementById('reelsContainer')) {
+        renderDedicatedReels(activeReelsSearchQuery);
+      }
 
       if (!isPullRefreshActive) {
         if (document.getElementById('inRangeContent').style.display === 'block' &&
@@ -2606,6 +2643,25 @@
   let dedicatedReelMusicStarted = false;
   let dedicatedReelObserver = null;
   let dedicatedReelMediaItem = null;
+  let dedicatedActiveReelElement = null;
+  let dedicatedReelMediaAppendCache = [];
+  let dedicatedReelPostAppendCache = [];
+  let reelsScrollLoading = false;
+  let reelsHasMore = true;
+  let reelsScrollBound = false;
+  const reelsBatchSize = 5;
+  let reelsVisibleCount = reelsBatchSize;
+
+  function appendUniqueReelBatch(target, batch, keyBuilder) {
+    const seen = new Set(target.map(keyBuilder));
+    (batch || []).forEach(item => {
+      const key = keyBuilder(item);
+      if (!key || seen.has(key)) return;
+      target.push(item);
+      seen.add(key);
+    });
+    return target;
+  }
 
   function escapeReelsHtml(value) {
     return String(value ?? '').replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -2623,25 +2679,26 @@
       const lon = store?.longitude ?? store?.lng ?? store?.lon;
       items.push({ id: String(store?.id || reel.merchant_id || index), reelId: String(reel.id || key), mediaUrl,
         isVideo: isMerchantVideo(reel, mediaUrl), musicUrl: getPostMusicUrl(reel), storeName: store?.store_name || store?.storeName || 'Star Shops Merchant',
+        ratingCount: Number(reel.rating_count ?? reel.ratings_count ?? reel.rating ?? 0) || 0,
+        likeCount: Number(reel.like_count ?? reel.likes ?? 0) || 0,
         discount: cleanReelText(reel.caption || reel.description || store?.offer_details?.discount, 'विशेष ऑफ़र'),
         avatar: store?.avatar_url || store?.profile_image || store?.display_image || fallbackSalonImages[index % fallbackSalonImages.length],
         location: compactReelLocation(store?.address || store?.location || store?.city || 'दिल्ली'),
         distance: compactReelLocation(store?.distance_text || store?.distance || store?.address || 'लोकेशन देखें'), lat: lat == null ? '' : String(lat), lon: lon == null ? '' : String(lon) });
     });
-    const directReelsByMerchant = new Map();
-    (supabaseCatalogCache.reels || []).forEach(reel => {
-      const key = String(reel.merchant_id ?? '');
-      if (!directReelsByMerchant.has(key)) directReelsByMerchant.set(key, []);
-      directReelsByMerchant.get(key).push(reel);
+    const storesById = new Map((searchableSupabaseStores || []).map(store => [String(store.id), store]));
+    dedicatedReelMediaAppendCache.forEach(reel => {
+      addFromStore(storesById.get(String(reel.merchant_id)) || { id: reel.merchant_id }, [reel]);
     });
-    (searchableSupabaseStores || []).forEach(store => addFromStore(store, directReelsByMerchant.get(String(store.id)) || []));
-    (dynamicPostsList || []).forEach(post => {
+    (dedicatedReelPostAppendCache.length ? dedicatedReelPostAppendCache : (dynamicPostsList || [])).forEach(post => {
       if (post.post_image) {
         addFromStore({ ...post, avatar_url: post.avatar }, [{
           id: post.media_id || `post_${post.id}_${post.post_image}`,
           url: post.post_image,
           caption: post.caption,
           music_url: post.music_url,
+          rating_count: post.rating_count || 0,
+          like_count: post.like_count || 0,
           created_at: post.created_at
         }]);
       }
@@ -2674,6 +2731,8 @@
       soundOn: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M16 9c2 1.5 2 4.5 0 6"></path><path d="M18.5 6.5c3.5 3 3.5 8 0 11"></path></svg>',
       soundOff: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9v6h4l5 4V5L8 9H4z"></path><path d="M17 9l4 6"></path><path d="M21 9l-4 6"></path></svg>',
       pause: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5v14"></path><path d="M17 5v14"></path></svg>',
+      lock: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 8 0v3"></path><circle cx="12" cy="15" r="1"></circle></svg>',
+      unlock: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="10" width="14" height="11" rx="2"></rect><path d="M8 10V7a4 4 0 0 1 7-2"></path><circle cx="12" cy="15" r="1"></circle></svg>',
       star: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.8 5.8 6.2.9-4.5 4.5 1.1 6.3-5.6-3-5.6 3 1.1-6.3L3 9.7l6.2-.9L12 3z"></path></svg>',
       share: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 4L4 11l6 2 2 6 8-15z"></path><path d="M10 13l10-9"></path></svg>',
       pin: '<svg class="reel-sketch-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s7-6.1 7-11.5A7 7 0 0 0 5 9.5C5 14.9 12 21 12 21z"></path><circle cx="12" cy="9.5" r="2.2"></circle></svg>',
@@ -2682,24 +2741,70 @@
     return icons[name] || '';
   }
 
-  function renderDedicatedReels(query = activeReelsSearchQuery) {
+  function renderDedicatedReels(query = activeReelsSearchQuery, preservePlayback = false) {
     const container = document.getElementById('reelsContainer');
     if (!container) return;
+    const previousVideo = preservePlayback ? container.querySelector('.reel-item.reel-media-playing video') : null;
+    const playbackSnapshot = previousVideo ? { index: previousVideo.closest('.reel-item')?.dataset.reelIndex, time: previousVideo.currentTime, paused: previousVideo.paused } : null;
     activeReelsSearchQuery = String(query || '').trim();
     const allItems = getDedicatedReelsItems();
     const term = activeReelsSearchQuery.toLowerCase();
-    reelsFeedItems = allItems.filter(item => !term || `${item.storeName} ${item.discount} ${item.location}`.toLowerCase().includes(term));
-    if (!reelsFeedItems.length) { dedicatedReelObserver?.disconnect(); stopDedicatedReelMusic(true); container.innerHTML = `<div class="reels-empty-state">${allItems.length ? 'इस सर्च से कोई रील नहीं मिली।' : 'अभी कोई मर्चेंट रील उपलब्ध नहीं है।'}</div>`; return; }
+    const filteredItems = allItems.filter(item => !term || `${item.storeName} ${item.discount} ${item.location}`.toLowerCase().includes(term));
+    reelsFeedItems = filteredItems.slice(0, reelsVisibleCount);
+    if (!reelsFeedItems.length) { dedicatedReelObserver?.disconnect(); stopDedicatedReelMusic(true); container.innerHTML = `<div class="reels-empty-state">${allItems.length ? 'इस सर्च से कोई रील नहीं मिली।' : 'अभी कोई मर्चेंट रील उपलब्ध नहीं है।'}</div>`; dedicatedReelsInitialized = true; return; }
     container.innerHTML = reelsFeedItems.map((item, index) => {
       const saved = savedReelsList.some(savedItem => savedItem.mediaUrl === item.mediaUrl || (!savedItem.mediaUrl && savedItem.store === item.storeName && savedItem.offer === item.discount));
-      const media = item.isVideo ? `<video src="${escapeReelsHtml(item.mediaUrl)}" loop muted playsinline preload="metadata"></video>` : `<img src="${escapeReelsHtml(item.mediaUrl)}" alt="${escapeReelsHtml(item.storeName)}">`;
+      const media = item.isVideo ? `<video src="${escapeReelsHtml(item.mediaUrl)}" preload="auto" playsinline autoplay muted loop></video>` : `<img src="${escapeReelsHtml(item.mediaUrl)}" alt="${escapeReelsHtml(item.storeName)}">`;
       return `<div class="reel-item" data-reel-index="${index}" onclick="handleScreenTap(event)">${media}
         <div class="reel-top-controls ui-element"><div class="reel-search-cluster"><button class="top-icon-btn search-trigger" onclick="openSearchFilter(event)" title="सर्च करें" aria-label="सर्च करें">${reelSketchIcon('search')}</button><div class="reel-inline-search"><input type="search" enterkeyhint="search" value="${escapeReelsHtml(activeReelsSearchQuery)}" placeholder="दुकान या लोकेशन खोजें" onkeydown="submitInlineReelsSearch(event, this)" aria-label="रील्स सर्च"><span class="search-submit-icon">${reelSketchIcon('search')}</span></div></div></div>
-        <div class="reel-actions ui-element"><button class="action-btn ${saved ? 'is-saved' : ''}" onclick="handleSaveClick(event)" ondblclick="saveReel(event)" title="सेव करें" aria-label="सेव करें">${reelSketchIcon('star')}</button><button class="action-btn" onclick="refreshDedicatedReels(event)" title="रील्स रिफ्रेश करें" aria-label="रील्स रिफ्रेश करें">${reelSketchIcon('refresh')}</button><button class="action-btn" onclick="shareReel(event)" title="शेयर करें" aria-label="शेयर करें">${reelSketchIcon('share')}</button></div>
+        <div class="reel-actions-bar ui-element"><button class="action-btn star-rating-btn ${isReelRated(item) ? 'rated' : ''}" onclick="rateWithStyle(this, event)" title="रेटिंग दें" aria-label="रेटिंग दें"><span class="star-icon-wrapper">${reelSketchIcon('star')}</span><span class="rating-status"><span class="count total-like-count" style="${item.ratingCount > 0 ? '' : 'display:none;'}">${formatCompactCount(item.ratingCount)}</span></span><span class="label-text">रेटिंग</span></button><button class="action-btn" onclick="refreshReelContent(event)" title="रील्स रिफ्रेश करें" aria-label="रील्स रिफ्रेश करें">${reelSketchIcon('refresh')}<span class="label-text">रीफ्रेश</span></button><button class="action-btn" onclick="shareReelContent(event)" title="रील्स शेयर करें" aria-label="रील्स शेयर करें">${reelSketchIcon('share')}<span class="label-text">शेयर</span></button><button class="action-btn lock-save-btn ${saved ? 'is-saved locked' : ''}" onclick="toggleLockSave(this, event)" title="सुरक्षित करें" aria-label="सुरक्षित करें"><span class="lock-icon">${reelSketchIcon(saved ? 'lock' : 'unlock')}</span><span class="label-text">सुरक्षित</span></button></div>
         <div class="reel-footer ui-element"><div class="merchant-profile-row" onclick="openMerchantProfile('${escapeReelsHtml(item.id)}')"><div class="merchant-avatar"><img src="${escapeReelsHtml(item.avatar)}" alt="Store"></div><div class="merchant-details"><h3 class="store-name">${escapeReelsHtml(item.storeName)}</h3><p class="store-discount">${escapeReelsHtml(item.discount)}</p></div></div>
           <div class="map-distance-row" onclick="openGoogleMap('${escapeReelsHtml(item.lat)}', '${escapeReelsHtml(item.lon)}', '${escapeReelsHtml(item.location)}')"><span class="map-pin-icon">${reelSketchIcon('pin')}</span><span class="distance-text">${escapeReelsHtml(item.distance)} (मैप खोलें)</span></div></div></div>`;
     }).join('');
+    dedicatedReelsInitialized = true;
     initDedicatedReelObserver();
+    initReelsInfiniteScroll();
+    if (playbackSnapshot?.index != null) {
+      const restoredVideo = container.querySelector(`.reel-item[data-reel-index="${playbackSnapshot.index}"] video`);
+      if (restoredVideo) {
+        restoredVideo.currentTime = playbackSnapshot.time || 0;
+        if (!playbackSnapshot.paused) restoredVideo.play().catch(() => {});
+      }
+    }
+  }
+
+  function initReelsInfiniteScroll() {
+    const feedContainer = document.getElementById('reelsContainer');
+    if (!feedContainer || reelsScrollBound) return;
+    reelsScrollBound = true;
+    feedContainer.addEventListener('scroll', () => {
+      if (reelsScrollLoading || !reelsHasMore) return;
+      // YouTube-style prefetch: आखिरी corner से पहले अगला batch background में लोड करें।
+      const prefetchDistance = Math.max(720, feedContainer.clientHeight * 1.5);
+      if (feedContainer.scrollTop + feedContainer.clientHeight >= feedContainer.scrollHeight - prefetchDistance) {
+        loadMoreReels();
+      }
+    }, { passive: true });
+  }
+
+  async function loadMoreReels() {
+    if (reelsScrollLoading || !reelsHasMore) return;
+    const feedContainer = document.getElementById('reelsContainer');
+    if (!feedContainer) return;
+    reelsScrollLoading = true;
+    const previousCount = reelsFeedItems.length;
+    const previousScrollTop = feedContainer.scrollTop;
+    try {
+      await fetchLiveMerchantsFromSupabase(true);
+      reelsVisibleCount += reelsBatchSize;
+      renderDedicatedReels(activeReelsSearchQuery, true);
+      if (reelsFeedItems.length <= previousCount) reelsHasMore = false;
+      feedContainer.scrollTop = previousScrollTop;
+    } catch (error) {
+      console.warn('नई reels load नहीं हो सकीं:', error);
+    } finally {
+      reelsScrollLoading = false;
+    }
   }
 
   function ensureDedicatedReelAudio() {
@@ -2824,19 +2929,23 @@
         const item = reelsFeedItems[Number(reelItem.dataset.reelIndex)];
 
         if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+          if (dedicatedActiveReelElement && dedicatedActiveReelElement !== reelItem) {
+            dedicatedActiveReelElement.querySelector('video')?.pause();
+            dedicatedActiveReelElement.classList.remove('reel-media-playing');
+          }
+          dedicatedActiveReelElement = reelItem;
           reelItem.classList.add('reel-media-playing');
           if (video) {
             video.muted = false;
             video.play().catch(() => {});
           }
-          if (item?.musicUrl && dedicatedReelMusicStarted) {
+          if (dedicatedReelMusicStarted) {
             syncDedicatedReelMusic(item, true);
           }
-        } else {
+        } else if (entry.intersectionRatio <= 0.05) {
           reelItem.classList.remove('reel-media-playing');
           if (video) {
             video.pause();
-            video.currentTime = 0;
           }
           if (item?.musicUrl && dedicatedReelAudioUrl === item.musicUrl) {
             stopDedicatedReelMusic(false);
@@ -2844,7 +2953,16 @@
         }
       });
     }, { root: container, threshold: [0.65] });
-    container.querySelectorAll('.reel-item').forEach(reel => dedicatedReelObserver.observe(reel));
+    container.querySelectorAll('.reel-item').forEach(reel => {
+      dedicatedReelObserver.observe(reel);
+      const video = reel.querySelector('video');
+      video?.addEventListener('canplay', () => {
+        if (reel.classList.contains('reel-media-playing') && video.paused && !video.ended) video.play().catch(() => {});
+      });
+      video?.addEventListener('stalled', () => {
+        if (reel.classList.contains('reel-media-playing') && !video.paused) video.play().catch(() => {});
+      });
+    });
   }
 
   function toggleDedicatedReelMusic(event) {
@@ -2910,15 +3028,25 @@
   function handleScreenTap(event) {
     if (event.target.closest('.ui-element')) return;
     const reel = event.currentTarget;
+    const item = getReelItemFromEvent(event);
+    toggleDedicatedReelLike(item, reel);
     const video = reel?.querySelector('video');
     if (video) {
       if (video.paused) {
         video.muted = false;
         video.play().catch(() => {});
         reel.classList.add('reel-media-playing');
+        if (item?.musicUrl) {
+          dedicatedReelMusicStarted = true;
+          syncDedicatedReelMusic(item, true);
+        }
       } else {
         video.pause();
         reel.classList.remove('reel-media-playing');
+        if (item?.musicUrl) {
+          dedicatedReelMusicStarted = false;
+          stopDedicatedReelMusic(false);
+        }
       }
     }
   }
@@ -2936,12 +3064,15 @@
     event.preventDefault();
     const query = input?.value || '';
     input?.blur();
+    reelsVisibleCount = reelsBatchSize;
     renderDedicatedReels(query);
   }
-  function resetSearchFilter(event) { if (event) { event.preventDefault(); event.stopPropagation(); } renderDedicatedReels(''); }
+  function resetSearchFilter(event) { if (event) { event.preventDefault(); event.stopPropagation(); } reelsVisibleCount = reelsBatchSize; renderDedicatedReels(''); }
   async function refreshDedicatedReels(event) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
-    const button = event?.target?.closest?.('.reel-actions .action-btn');
+    const button = event?.target?.closest?.('.reel-actions-bar .action-btn');
+    reelsHasMore = true;
+    reelsVisibleCount = reelsBatchSize;
     if (button) {
       button.disabled = true;
       button.classList.add('is-refreshing');
@@ -2955,6 +3086,84 @@
         button.disabled = false;
         button.classList.remove('is-refreshing');
       }
+    }
+  }
+  function refreshReelContent(event) { return refreshDedicatedReels(event); }
+  function shareReelContent(event) { return shareReel(event); }
+  function reelInteractionKey(item) { return String(item?.reelId || item?.mediaUrl || ''); }
+  function formatCompactCount(value) {
+    const count = Math.max(0, Number(value) || 0);
+    if (count >= 1000000) return `${(count / 1000000).toFixed(count >= 10000000 ? 0 : 1).replace(/\.0$/, '')}M`;
+    if (count >= 1000) return `${(count / 1000).toFixed(count >= 10000 ? 0 : 1).replace(/\.0$/, '')}K`;
+    return String(Math.floor(count));
+  }
+  function readReelInteractionMap(name) {
+    try { return JSON.parse(localStorage.getItem(name) || '{}') || {}; } catch (_) { return {}; }
+  }
+  function isReelRated(item) { return Boolean(readReelInteractionMap('starshops_rated_reels')[reelInteractionKey(item)]); }
+  async function persistReelMetric(item, field, value) {
+    if (!item?.reelId || !supabaseClient?.from) return;
+    try {
+      const { error } = await supabaseClient.from('reels').update({ [field]: value }).eq('id', item.reelId);
+      if (error) console.warn(`Supabase ${field} update failed:`, error.message || error);
+    } catch (error) { console.warn(`Supabase ${field} update failed:`, error); }
+  }
+  async function toggleDedicatedReelLike(item, reelElement) {
+    if (!item) return;
+    const key = reelInteractionKey(item);
+    const likes = readReelInteractionMap('starshops_liked_reels');
+    const liked = !Boolean(likes[key]);
+    likes[key] = liked;
+    localStorage.setItem('starshops_liked_reels', JSON.stringify(likes));
+    item.likeCount = Math.max(0, Number(item.likeCount || 0) + (liked ? 1 : -1));
+    reelElement?.classList.toggle('reel-is-liked', liked);
+    await persistReelMetric(item, 'like_count', item.likeCount);
+  }
+  function rateWithStyle(button, event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    if (!button) return;
+    const item = getReelItemFromEvent(event);
+    const key = reelInteractionKey(item);
+    const ratings = readReelInteractionMap('starshops_rated_reels');
+    const rated = !Boolean(ratings[key]);
+    ratings[key] = rated;
+    localStorage.setItem('starshops_rated_reels', JSON.stringify(ratings));
+    if (item) item.ratingCount = Math.max(0, Number(item.ratingCount || 0) + (rated ? 1 : -1));
+    const totalCount = button.querySelector('.total-like-count');
+    if (totalCount) {
+      totalCount.textContent = formatCompactCount(item?.ratingCount || 0);
+      totalCount.style.display = item?.ratingCount > 0 ? 'inline' : 'none';
+    }
+    button.classList.toggle('rated', rated);
+    const star = button.querySelector('.star-icon-wrapper');
+    star?.classList.remove('rating-flash');
+    requestAnimationFrame(() => star?.classList.add('rating-flash'));
+    if (item) persistReelMetric(item, 'rating_count', item.ratingCount);
+    console.log('Star rated successfully with a pure-white flash!');
+  }
+  function toggleLockSave(button, event) {
+    if (event) { event.preventDefault(); event.stopPropagation(); }
+    const item = getReelItemFromEvent(event);
+    if (!item || !button) return;
+    const icon = button.querySelector('.lock-icon');
+    const savedIndex = savedReelsList.findIndex(saved => saved.mediaUrl === item.mediaUrl || (!saved.mediaUrl && saved.store === item.storeName && saved.offer === item.discount));
+    const shouldLock = savedIndex < 0;
+    if (shouldLock) {
+      savedReelsList.unshift({ key: `dedicated_reel_${item.reelId}`, store: item.storeName, location: item.location, offer: item.discount, mediaUrl: item.mediaUrl, expires: 'आज रात 12:00 बजे' });
+      button.classList.add('locked', 'is-saved');
+      if (icon) icon.innerHTML = reelSketchIcon('lock');
+      localStorage.setItem('starshops_saved_deals', JSON.stringify(savedReelsList));
+      const popup = document.getElementById('lock-popup');
+      popup?.classList.add('show');
+      clearTimeout(window.__lockPopupTimer);
+      window.__lockPopupTimer = setTimeout(() => popup?.classList.remove('show'), 2200);
+      console.log('Reel locked, saved & secured in vault!');
+    } else {
+      savedReelsList.splice(savedIndex, 1);
+      button.classList.remove('locked', 'is-saved');
+      if (icon) icon.innerHTML = reelSketchIcon('unlock');
+      localStorage.setItem('starshops_saved_deals', JSON.stringify(savedReelsList));
+      console.log('Reel unlocked!');
     }
   }
   function handleSaveClick(event) {
@@ -2995,9 +3204,6 @@
     if (tabName === 'alerts') markVisibleAlertsAsSeen();
     if (tabName === 'profile') loadLocalUserStats();
     window.scrollTo(0, 0);
-    if (tabName === 'posts') {
-      renderDedicatedReels(activeReelsSearchQuery);
-    }
   }
 
   function updateLiveSavingsDetector() {
@@ -3050,15 +3256,20 @@
   }
   function closeMonthlyHistoryModal() { document.getElementById('monthlyHistoryModal').classList.remove('open'); }
 
-  function openSavedReelsModal() { renderSavedDealsList(savedReelsList); document.getElementById('savedReelsModal').classList.add('open'); }
+  function openSavedReelsModal() { renderSavedReels(savedReelsList); document.getElementById('savedReelsModal').classList.add('open'); }
   function renderSavedDealsList(list) {
     const container = document.getElementById('savedReelsListContainer');
     if (!list || list.length === 0) { container.innerHTML = `<div style="text-align:center; color:#6B7280; font-size:13px; padding:10px;">कोई डील्स या लोकेशन नहीं मिली।</div>`; return; }
-    container.innerHTML = list.map(item => `<div style="display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #E5E7EB;"><div><div style="font-size:13px; font-weight:800; color:#111827;">${item.store}</div><div class="highlight-text" style="font-size:11px; color:#B45309; font-weight:700; margin-top:2px;">📍 ${item.location}</div><div class="red-text" style="font-size:10px; color:#DC2626; font-weight:700; margin-top:1px;">⏳ एक्सपायर: रात 12:00 बजे</div></div><div class="green-text" style="font-size:12px; font-weight:800; color:#059669; background:#ECFDF5; padding:6px 10px; border-radius:8px;">${item.offer}</div></div>`).join('');
+    container.innerHTML = list.map((item, index) => {
+      const mediaUrl = item.video_url || item.mediaUrl || item.url || '';
+      const preview = mediaUrl ? `<video src="${escapeReelsHtml(mediaUrl)}" muted playsinline preload="metadata" controls style="width:72px;height:104px;object-fit:cover;border-radius:8px;background:#111;"></video>` : `<div style="width:72px;height:104px;border-radius:8px;background:#E5E7EB;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6B7280;">वीडियो नहीं</div>`;
+      return `<div class="saved-reel-item" style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #E5E7EB;"><span class="reel-serial-number" style="width:28px;flex:0 0 28px;font-size:12px;font-weight:900;color:#B38728;">#${index + 1}</span>${preview}<div style="min-width:0;flex:1;"><div style="font-size:13px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeReelsHtml(item.store || item.storeName || 'सुरक्षित रील')}</div><div class="highlight-text" style="font-size:11px;color:#B45309;font-weight:700;margin-top:2px;">📍 ${escapeReelsHtml(item.location || 'लोकेशन उपलब्ध नहीं')}</div><div class="red-text" style="font-size:10px;color:#DC2626;font-weight:700;margin-top:1px;">⏳ एक्सपायर: रात 12:00 बजे</div><div class="green-text" style="font-size:12px;font-weight:800;color:#059669;margin-top:4px;">${escapeReelsHtml(item.offer || 'सुरक्षित रील')}</div></div></div>`;
+    }).join('');
   }
+  function renderSavedReels(savedList) { renderSavedDealsList(savedList); }
   function filterSavedDealsByLocation(query) {
     const term = query.toLowerCase().trim();
-    renderSavedDealsList(savedReelsList.filter(item => !term || item.location.toLowerCase().includes(term) || item.store.toLowerCase().includes(term) || item.offer.toLowerCase().includes(term)));
+    renderSavedReels(savedReelsList.filter(item => !term || item.location.toLowerCase().includes(term) || item.store.toLowerCase().includes(term) || item.offer.toLowerCase().includes(term)));
   }
   function closeSavedReelsModal() { document.getElementById('savedReelsModal').classList.remove('open'); }
 
