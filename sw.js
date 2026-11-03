@@ -1,4 +1,4 @@
-const CACHE_NAME = 'star-merchant-v2'; // 👈 जब भी बड़ा अपडेट करो, इसे v3, v4 कर सकते हो
+const CACHE_NAME = 'star-merchant-v3'; // 👈 जब भी बड़ा अपडेट करो, इसे v3, v4 कर सकते हो
 const assetsToCache = [
   './index.html',
   './manifest.json',
