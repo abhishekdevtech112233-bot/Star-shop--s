@@ -3,7 +3,7 @@ name: Star Shops 30-Min Load Test
 on:
   workflow_dispatch:
 
-jobs:
+jobs: 
   k6_test:
     runs-on: ubuntu-latest
     steps:
