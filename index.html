@@ -1,4 +1,4 @@
-   <!DOCTYPE html>
+    <!DOCTYPE html>
 <html lang="hi">
 <head>
   <meta charset="UTF-8">
@@ -386,6 +386,8 @@
     .post-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
     .mini-reel-thumb { aspect-ratio: 1/1; background: #111; border-radius: 8px; overflow: hidden; border: 1px solid #E5E7EB; position: relative; cursor: pointer; }
     .mini-reel-thumb video, .mini-reel-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; pointer-events: none; }
+    .full-post-close-btn { position: absolute; top: 12px; right: 12px; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); border: 2px solid #fff; color: #fff; width: 32px; height: 32px; border-radius: 50%; font-size: 16px; font-weight: bold; cursor: pointer; z-index: 10; display: flex; align-items: center; justify-content: center; padding: 0; }
+    body.premium-mode-body .full-post-close-btn { border-color: #D4AF37 !important; color: #D4AF37 !important; background: rgba(10,10,10,0.8) !important; }
 
     .merchant-gallery-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; max-height: 300px; overflow-y: auto; }
     .gallery-thumb-item { aspect-ratio: 1/1; background: #111; border-radius: 8px; overflow: hidden; border: 1px solid #E5E7EB; position: relative; cursor: pointer; }
@@ -400,9 +402,10 @@
     .story-tap-right { position: absolute; top: 0; right: 0; width: 60%; height: 100%; z-index: 15; }
     .story-water-play-btn { position: absolute; bottom: 12px; right: 12px; background: rgba(0, 0, 0, 0.45); border: 1px solid rgba(255, 255, 255, 0.25); color: #fff; padding: 5px 12px; border-radius: 16px; font-size: 10px; font-weight: 700; cursor: pointer; z-index: 25; backdrop-filter: blur(4px); letter-spacing: 0.5px; }
     .story-music-btn { position:absolute; bottom:12px; left:12px; z-index:26; background:rgba(0,0,0,.62); border:1px solid rgba(255,255,255,.35); color:#fff; padding:7px 12px; border-radius:18px; font-size:11px; font-weight:800; cursor:pointer; backdrop-filter:blur(5px); }
-    .post-music-row { padding:0 16px 12px; }
-    .post-music-btn { border:1px solid #FDE68A; background:#FFFBEB; color:#92400E; border-radius:18px; padding:7px 12px; font-size:12px; font-weight:800; cursor:pointer; }
-    .post-music-btn.is-playing, .story-music-btn.is-playing { background:#F59E0B; color:#111827; }
+    .post-music-row { padding: 0 16px 12px; }
+    .post-music-btn { border: 1px solid #FDE68A; background: #FFFBEB; color: #92400E; border-radius: 18px; padding: 7px 12px; font-size: 12px; font-weight: 800; cursor: pointer; }
+    .post-music-btn.is-playing { background: #F59E0B; color: #111827; }
+    .story-music-btn.is-playing { background: #F59E0B; color: #111827; }
 
     /* Modal Styling */
     .reel-popup-action-overlay, .crop-modal-overlay, .scanner-modal-overlay, .success-modal-overlay, .shop-profile-modal, .auth-modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 999999 !important; display: none; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
@@ -742,6 +745,13 @@
     </div>
   </main>
 
+  <main id="tab-image-posts" class="tab-screen">
+    <div style="font-size:16px; font-weight:900; color:#111827; margin-bottom: 12px;">📰 मर्चेंट फीड</div>
+    <div id="postsFeedContainer">
+      <div style="font-size:13px; color:#6B7280; text-align:center; padding:30px;">पोस्ट्स लोड हो रही हैं...</div>
+    </div>
+  </main>
+
   <main id="tab-alerts" class="tab-screen">
     <div style="font-size:16px; font-weight:900; color:#111827; margin: 14px 0 10px 0;" id="alertsHeadingText">⚡ लाइव मर्चेंट अलर्ट्स & ऑफर्स</div>
     <div id="liveAlertsContainer">
@@ -848,6 +858,17 @@
         </svg>
       </div>
       <div id="navPostsText">रील्स</div>
+    </div>
+
+    <div class="nav-item" onclick="switchMainTab('image-posts', this)">
+      <div class="icon">
+        <svg width="26" height="26" viewBox="0 0 100 100">
+          <rect x="15" y="18" width="70" height="64" rx="8" fill="none" stroke="url(#metal3D)" stroke-width="8" filter="url(#dropShadow)"/>
+          <circle cx="35" cy="38" r="7" fill="url(#metal3D)" filter="url(#dropShadow)"/>
+          <path d="M20 72 L42 50 L56 63 L65 54 L82 72" fill="none" stroke="url(#metal3D)" stroke-width="7" stroke-linejoin="round" filter="url(#dropShadow)"/>
+        </svg>
+      </div>
+      <div id="navImagePostsText">पोस्ट्स</div>
     </div>
     
     <div class="nav-item" onclick="switchMainTab('alerts', this)">
@@ -957,9 +978,13 @@
     
     <div class="light-box-text-fix" style="background: #F8F9FA; border: 1px solid #E5E7EB; border-radius: 12px; padding: 12px; margin: 10px 0; text-align: left; font-size: 12px; line-height: 1.5;">
       <div><b>📍 लोकेशन / पता:</b> <span id="pubProfileAddress">दिल्ली</span></div>
+      <div style="margin-top:6px;"><b>📞 फोन:</b> <span id="pubProfilePhone">उपलब्ध नहीं</span></div>
       <div style="margin-top:6px;"><b>💬 मर्चेंट डिस्क्रिप्शन / ऑफ़र:</b> <br><span id="pubProfileCaption" class="highlight-text" style="color:#B45309; font-weight:700;">एन/ए</span></div>
     </div>
 
+    <div style="font-size: 13px; font-weight: 900; color: #111827; text-align: left; margin: 12px 0 4px 0;">🎁 मर्चेंट ऑफर्स</div>
+    <div id="offersContainer" style="text-align:left; margin-bottom:12px;"><div style="font-size:11px; color:#6B7280; padding:10px 0;">ऑफर्स लोड हो रहे हैं...</div></div>
+    
     <div style="font-size: 13px; font-weight: 900; color: #111827; text-align: left; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
       <span>🎬</span> <span>मर्चेंट रील सेक्शन:</span>
     </div>
@@ -1057,9 +1082,79 @@
   const SUPABASE_URL = "https://gejrzpflcuvlbpedliwq.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_dw9J2AX0nd3SxPrRy9JGCg_YqS8ZfUF";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// किसी रील के कुल लाइक्स लाने और चेक करने के लिए कि यूजर ने लाइक किया है या नहीं
+async function getReelLikesInfo(reelId, userId) {
+  try {
+    // कुल लाइक्स की गिनती के लिए
+    const { count, error: countError } = await supabaseClient
+      .from('likes')
+      .select('*', { count: 'exact', head: true })
+      .eq('reel_id', reelId);
+
+    if (countError) throw countError;
+
+    // यह चेक करने के लिए कि क्या करंट यूजर ने इसे लाइक किया है
+    let userLiked = false;
+    if (userId) {
+      const { data: userLikeData, error: userError } = await supabaseClient
+        .from('likes')
+        .select('id')
+        .eq('reel_id', reelId)
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (!userError && userLikeData) {
+        userLiked = true;
+      }
+    }
+
+    return { likeCount: count || 0, userLiked };
+  } catch (err) {
+    console.error("Likes fetch error:", err.message);
+    return { likeCount: 0, userLiked: false };
+  }
+}
+
+// लाइक जोड़ने या हटाने (Toggle) के लिए फंक्शन
+async function toggleReelLike(reelId, userId) {
+  try {
+    // पहले चेक करें कि क्या यूजर ने पहले से लाइक किया है
+    const { data: existingLike, error: checkError } = await supabaseClient
+      .from('likes')
+      .select('id')
+      .eq('reel_id', reelId)
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (checkError) throw checkError;
+
+    if (existingLike) {
+      // अगर पहले से लाइक है, तो उसे हटा दें (Unlike)
+      const { error: deleteError } = await supabaseClient
+        .from('likes')
+        .delete()
+        .eq('reel_id', reelId)
+        .eq('user_id', userId);
+
+      if (deleteError) throw deleteError;
+      return { liked: false };
+    } else {
+      // अगर लाइक नहीं है, तो नया रिकॉर्ड जोड़ें (Like)
+      const { error: insertError } = await supabaseClient
+        .from('likes')
+        .insert([{ reel_id: reelId, user_id: userId }]);
+
+      if (insertError) throw insertError;
+      return { liked: true };
+    }
+  } catch (err) {
+    console.error("Toggle like error:", err.message);
+    return null;
+  }
+}
   const SUPABASE_PAGE_SIZE = 1000;
   const SUPABASE_CATALOG_CACHE_TTL = 5 * 60 * 1000;
-  let supabaseCatalogCache = { merchants: [], reels: [], loadedAt: 0 };
+  let supabaseCatalogCache = { merchants: [], posts: [], reels: [], loadedAt: 0 };
   let supabaseCatalogLoadPromise = null;
 
   async function fetchCompleteSupabaseTable(tableName) {
@@ -1085,10 +1180,10 @@
     if (!forceRefresh && fresh) return supabaseCatalogCache;
     if (supabaseCatalogLoadPromise) return supabaseCatalogLoadPromise;
     supabaseCatalogLoadPromise = (async () => {
-      const [merchants, reels] = await Promise.all([
-        fetchCompleteSupabaseTable('merchants'), fetchCompleteSupabaseTable('reels')
+      const [merchants, posts, reels] = await Promise.all([
+        fetchCompleteSupabaseTable('merchants'), fetchCompleteSupabaseTable('posts'), fetchCompleteSupabaseTable('reels')
       ]);
-      supabaseCatalogCache = { merchants, reels, loadedAt: Date.now() };
+      supabaseCatalogCache = { merchants, posts, reels, loadedAt: Date.now() };
       return supabaseCatalogCache;
     })();
     try { return await supabaseCatalogLoadPromise; }
@@ -1096,7 +1191,7 @@
   }
 
   function applyRealtimeRowToCatalog(payload) {
-    const tableKey = payload?.table === 'merchants' ? 'merchants' : payload?.table === 'reels' ? 'reels' : '';
+    const tableKey = payload?.table === 'merchants' ? 'merchants' : payload?.table === 'posts' ? 'posts' : payload?.table === 'reels' ? 'reels' : '';
     if (!tableKey || !supabaseCatalogCache.loadedAt) return;
     const isDelete = payload.eventType === 'DELETE';
     const row = isDelete ? payload.old : payload.new;
@@ -1108,7 +1203,7 @@
     else rows.push(row);
   }
 
-  let homeLat = null, homeLon = null, userCurrentState = "", userCurrentCity = "";
+  let homeLat = null, homeLon = null, userCurrentState = "", userCurrentCity = "", userCurrentLocality = "";
   let currentShopperName = ""; let currentUserPhone = "";
   let activeShopName = "", activeShopDiscount = 0, activeCardId = null, activeClaimTitle = "";
   let todayClaimCount = 0, totalClaimedCardsCount = 0;
@@ -1327,6 +1422,7 @@
       }
 
       let finalAreaName = `${microLocality}, दिल्ली`;
+      userCurrentLocality = microLocality;
       headerLocation.innerText = finalAreaName;
       headerLocation.title = `सटीक एरिया: ${finalAreaName} (पिन: ${postcode})`;
     } catch (_) {
@@ -1485,6 +1581,7 @@
     gpsResolvedOnce = true;
     manualLocationSelected = true;
     manualAreaQuery = normalizedArea;
+    userCurrentLocality = normalizedArea.split(',')[0].trim();
     homeLat = null;
     homeLon = null;
     document.getElementById('headerLocationText').innerText = normalizedArea;
@@ -1510,6 +1607,7 @@
 
     realtimeSyncChannel = supabaseClient.channel('star-shops-live-cards')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'merchants' }, queueBackgroundAutoSearch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, queueBackgroundAutoSearch)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'reels' }, queueBackgroundAutoSearch)
       .subscribe();
   }
@@ -1559,7 +1657,7 @@
   function initInfiniteScrollLogic() {
     if ('IntersectionObserver' in window) {
       postsPreloadObserver = new IntersectionObserver(entries => {
-        if (entries.some(entry => entry.isIntersecting) && document.getElementById('tab-posts').classList.contains('active')) {
+        if (entries.some(entry => entry.isIntersecting) && document.getElementById('tab-image-posts').classList.contains('active')) {
           loadNextPostsBatch();
         }
       }, { root: null, rootMargin: '0px 0px 140px 0px', threshold: 0 });
@@ -1569,7 +1667,7 @@
 
     let scrollCheckPending = false;
     window.addEventListener('scroll', () => {
-      if (scrollCheckPending || !document.getElementById('tab-posts').classList.contains('active')) return;
+      if (scrollCheckPending || !document.getElementById('tab-image-posts').classList.contains('active')) return;
       scrollCheckPending = true;
       requestAnimationFrame(() => {
         scrollCheckPending = false;
@@ -1584,7 +1682,7 @@
     if (!postsPreloadObserver) return;
     postsPreloadObserver.disconnect();
     const postsTab = document.getElementById('tab-posts');
-    if (!postsTab || !postsTab.classList.contains('active') || !postsFeedSource.length) return;
+    if (!postsTab || !document.getElementById('tab-image-posts')?.classList.contains('active') || !postsFeedSource.length) return;
     const cards = document.querySelectorAll('#postsFeedContainer .post-card');
     const triggerCard = cards[Math.max(0, cards.length - 5)];
     if (triggerCard) postsPreloadObserver.observe(triggerCard);
@@ -1720,16 +1818,18 @@
   }
 
   function getMerchantMediaUrl(media) {
-    return String(media?.video_url || media?.url || media?.image_url || '').trim();
+    return String(media?.video_url || media?.image_url || media?.url || '').trim();
   }
 
   function isMerchantVideo(media, mediaUrl = getMerchantMediaUrl(media)) {
     const type = String(media?.media_type || media?.mime_type || media?.file_type || media?.type || '').toLowerCase().trim();
     if (type.startsWith('video/') || ['video', 'reel', 'mp4', 'm4v', 'mov', 'webm', 'ogv', 'ogg', 'hls'].includes(type)) return true;
     if (String(media?.video_url || '').trim()) return true;
+    
     const pathOnly = String(mediaUrl || '').split(/[?#]/, 1)[0].toLowerCase();
     if (/\.(mp4|m4v|mov|webm|ogv|ogg|m3u8)$/.test(pathOnly)) return true;
-    return pathOnly.includes('reel');
+    
+    return false;
   }
 
   function mediaCreatedAt(media) {
@@ -1951,9 +2051,18 @@
   }
 
   function isHighDiscountMerchant(store) {
-    const discountText = (store?.offer_details?.discount || '').toLowerCase();
-    const numericDiscount = parseInt(discountText.match(/(\d+)/)?.[1] || 0);
-    return numericDiscount >= 150 || discountText.includes('200') || discountText.includes('flat');
+    return false;
+  }
+
+  function sortShopsByLocality(shopsList, userCurrentLocality) {
+    const targetLocality = String(userCurrentLocality || '').trim().toLocaleLowerCase('hi-IN');
+    return (shopsList || []).sort((a, b) => {
+      const aLocality = String(a?.locality || a?.area || a?.address || '').toLocaleLowerCase('hi-IN');
+      const bLocality = String(b?.locality || b?.area || b?.address || '').toLocaleLowerCase('hi-IN');
+      if (targetLocality && aLocality === targetLocality && bLocality !== targetLocality) return -1;
+      if (targetLocality && aLocality !== targetLocality && bLocality === targetLocality) return 1;
+      return 0;
+    });
   }
 
   function renderPostsFeed(postsArray, append = false) {
@@ -1963,8 +2072,7 @@
       return;
     }
     if (!append) {
-      postsFeedSource = (postsArray || []).filter(post =>
-        matchesSelectedArea(post) && (userStepsData.unlockedHighDiscount || !post.isHighDiscount));
+      postsFeedSource = sortShopsByLocality((postsArray || []).filter(post => matchesSelectedArea(post)), userCurrentLocality);
       renderedPostCount = 0;
       container.innerHTML = '';
     }
@@ -2209,9 +2317,8 @@
 
   function renderDynamicAlerts(storesArray) {
     const container = document.getElementById('liveAlertsContainer');
-    storesArray = (storesArray || []).filter(store =>
-      isAlertWithinExpiryWindow(store) && matchesSelectedArea(store) &&
-      (userStepsData.unlockedHighDiscount || !isHighDiscountMerchant(store)));
+    storesArray = sortShopsByLocality((storesArray || []).filter(store =>
+      isAlertWithinExpiryWindow(store) && matchesSelectedArea(store)), userCurrentLocality);
     currentVisibleAlertKeys = storesArray.map(getAlertKey);
     if (document.getElementById('tab-alerts')?.classList.contains('active')) {
       markVisibleAlertsAsSeen();
@@ -2238,18 +2345,16 @@
 
   function openHighDiscountUnlockModal() {
     document.getElementById('successModalEmoji').innerText = "👑";
-    document.getElementById('successModalTitle').innerText = "आपका खास surprise खुल गया!";
-    document.getElementById('successModalDesc').innerText = "शानदार! आपने 2000 कदम पूरे कर लिए। अब आपके लिए खास high-discount offers खुल गए हैं।";
+    document.getElementById('successModalTitle').innerText = "आपका Golden Theme सक्रिय हो गया!";
+    document.getElementById('successModalDesc').innerText = "शानदार! आपने 2000 कदम पूरे कर लिए। अब Star Shop ऐप Golden Theme में है।";
     const btn = document.getElementById('successModalBtn');
-    btn.innerText = "★ मेरे खास offers देखें";
+    btn.innerText = "★ Golden Theme देखें";
     btn.onclick = () => {
       closeSuccessModal();
       activateHighDiscountZoneUIMode();
       renderHomeStoreResults();
       renderDynamicAlerts(liveSupabaseStores);
       renderPostsFeed(dynamicPostsList);
-      const highChip = document.getElementById('chipHighDiscount');
-      if (highChip) filterCategory('HIGHDISCOUNT', highChip);
     };
     document.getElementById('successModalOverlay').classList.add('open');
   }
@@ -2327,9 +2432,9 @@
     activeStoreSearchQuery = query;
     const searchMode = Boolean(query);
     const sourceStores = searchMode ? searchableSupabaseStores : liveSupabaseStores;
-    let results = (sourceStores || []).filter(store =>
+    let results = sortShopsByLocality((sourceStores || []).filter(store =>
       matchesMerchantCategory(store) && (searchMode ? matchesMerchantSearch(store, query) : matchesSelectedArea(store))
-    );
+    ), userCurrentLocality);
     if (searchMode && results.length === 0) {
       const container = document.getElementById('dynamicStoresContainer');
       if (container) container.innerHTML = '<div style="text-align:center;padding:30px;color:#6B7280;font-size:13px;">इस नाम, नंबर या जानकारी से कोई दुकान नहीं मिली।</div>';
@@ -2351,8 +2456,8 @@
 
   function renderDynamicStores(storesArray, showAllSearchResults = false) {
     const container = document.getElementById('dynamicStoresContainer');
-    storesArray = (storesArray || []).filter(store =>
-      (showAllSearchResults || matchesSelectedArea(store)) && (userStepsData.unlockedHighDiscount || !isHighDiscountMerchant(store)));
+    storesArray = sortShopsByLocality((storesArray || []).filter(store =>
+      showAllSearchResults || matchesSelectedArea(store)), userCurrentLocality);
     if (!container.dataset.merchantClickHandlersAttached) {
       container.addEventListener('click', (event) => {
         const actionElement = event.target.closest('[data-card-action]');
@@ -2474,25 +2579,125 @@
   }
 
   async function openMerchantPublicProfileById(merchantId) {
-    const store = findMerchantById(merchantId);
-    if (!store) return;
-    document.getElementById('pubProfileStoreName').innerText = store.store_name || "स्टोर";
-    document.getElementById('pubProfileCategory').innerText = `📂 ${store.category || 'सलून'}`;
-    
-    document.getElementById('pubProfileImg').src = store.display_image || fallbackSalonImages[0];
-    document.getElementById('pubProfileAddress').innerText = store.address || store.location || "दिल्ली";
-    
-    let safeOffer = store.offer_details?.discount || "✨ बेहतरीन सर्विस, सबसे सही दाम";
-    let safeDesc = store.offer_details?.conditions || store.description || "सबसे सही दाम और शानदार काम";
-    
+    let store = findMerchantById(merchantId);
+    if (!store) {
+      const { data: legacyStore, error: legacyStoreError } = await supabaseClient
+        .from('merchants')
+        .select('*')
+        .eq('id', merchantId)
+        .maybeSingle();
+      if (legacyStoreError) console.error('Legacy merchant fetch error:', legacyStoreError);
+      store = legacyStore || null;
+    }
+    let profile = null;
+    try {
+      const { data, error } = await supabaseClient
+        .from('merchant_profiles')
+        .select('*')
+        .eq('merchant_id', merchantId)
+        .maybeSingle();
+      if (error) console.error('Profile fetch error:', error);
+      profile = data || null;
+    } catch (error) {
+      console.error('Profile fetch error:', error);
+    }
+
+    profile = profile || store;
+    if (!profile) {
+      console.error('Merchant profile not found:', merchantId);
+      return;
+    }
+
+    const profileStoreName = profile.store_name || profile.shop_name || profile.name || 'स्टोर';
+    const profileCategory = profile.category || store?.category || 'सलून';
+    const profileAddress = profile.address || profile.location || store?.address || 'दिल्ली';
+    const profileLogo = profile.logo_url || profile.display_image || profile.image_url || store?.display_image || fallbackSalonImages[0];
+    const profilePhone = profile.phone || profile.mobile || profile.phone_number || 'उपलब्ध नहीं';
+    const safeOffer = store?.offer_details?.discount || profile.offer_title || '✨ बेहतरीन सर्विस, सबसे सही दाम';
+    const safeDesc = store?.offer_details?.conditions || profile.offer_details || profile.description || 'सबसे सही दाम और शानदार काम';
+
+    document.getElementById('pubProfileStoreName').innerText = profileStoreName;
+    document.getElementById('pubProfileCategory').innerText = `📂 ${profileCategory}`;
+    document.getElementById('pubProfileImg').src = profileLogo;
+    document.getElementById('pubProfileAddress').innerText = profileAddress;
+    document.getElementById('pubProfilePhone').innerText = profilePhone;
     document.getElementById('pubProfileCaption').innerText = `ऑफर: ${safeOffer}\nविवरण: ${safeDesc}`;
 
     const wrapperContainer = document.getElementById('merchantGalleryAreaWrapper');
     document.getElementById('merchantPublicProfileModal').classList.add('open');
+    loadMerchantOffers(merchantId);
 
-    if (store.reels && store.reels.length > 0) { renderStoryStyleGrid(store.reels, store, wrapperContainer); } 
+    if (store?.reels && store.reels.length > 0) { renderStoryStyleGrid(store.reels, store, wrapperContainer); } 
     else { 
-      wrapperContainer.innerHTML = `<div class="merchant-gallery-grid" style="grid-template-columns: 1fr;"><div class="gallery-thumb-item" style="aspect-ratio: 16/9;"><img src="${store.display_image || fallbackSalonImages[0]}" style="width:100%; height:100%; object-fit:cover;" alt="Store Photo"></div></div>`; 
+      wrapperContainer.innerHTML = `<div class="merchant-gallery-grid" style="grid-template-columns: 1fr;"><div class="gallery-thumb-item" style="aspect-ratio: 16/9;"><img src="${profileLogo}" style="width:100%; height:100%; object-fit:cover;" alt="Store Photo"></div></div>`; 
+    }
+  }
+
+  async function loadMerchantOffers(merchantId) {
+    const offersContainer = document.getElementById('offersContainer');
+    if (!offersContainer) return;
+    offersContainer.innerHTML = `<div style="font-size:11px; color:#6B7280; padding:10px 0;">ऑफर्स लोड हो रहे हैं...</div>`;
+
+    let { data, error } = await supabaseClient
+      .from('merchant_offers')
+      .select('offer_title, offer_details, banner_url, expires_at')
+      .eq('merchant_id', merchantId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Offers fetch error:', error);
+      data = [];
+    }
+
+    if (!data || data.length === 0) {
+      const { data: legacyMerchant, error: legacyError } = await supabaseClient
+        .from('merchants')
+        .select('offer_details, description, store_name')
+        .eq('id', merchantId)
+        .maybeSingle();
+      if (legacyError) console.error('Legacy offers fetch error:', legacyError);
+      const legacyOffer = legacyMerchant?.offer_details;
+      if (legacyMerchant && legacyOffer) {
+        data = [{
+          offer_title: legacyMerchant.store_name || 'विशेष ऑफर',
+          offer_details: typeof legacyOffer === 'object' ? (legacyOffer.conditions || legacyOffer.discount || legacyMerchant.description || '') : String(legacyOffer),
+          banner_url: '',
+          expires_at: legacyOffer.expires_at || ''
+        }];
+      }
+    }
+
+    if (!data || data.length === 0) {
+      offersContainer.innerHTML = `<div style="font-size:11px; color:#6B7280; padding:10px 0;">अभी कोई ऑफर उपलब्ध नहीं है।</div>`;
+      return;
+    }
+
+    offersContainer.innerHTML = data.map(offer => `
+      <div class="offer-card" style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:12px; overflow:hidden; margin-bottom:10px;">
+        ${offer.banner_url ? `<img src="${offer.banner_url}" alt="Offer Banner" style="width:100%; max-height:180px; object-fit:contain; display:block; background:#fff;">` : ''}
+        <div style="padding:10px 12px;">
+          <h3 style="font-size:14px; font-weight:900; color:#92400E; margin:0 0 4px;">${offer.offer_title || 'विशेष ऑफर'}</h3>
+          <p style="font-size:12px; color:#4B5563; margin:0; line-height:1.45;">${offer.offer_details || ''}</p>
+          ${offer.expires_at ? `<div style="font-size:10px; color:#DC2626; font-weight:700; margin-top:6px;">⏳ समाप्ति: ${new Date(offer.expires_at).toLocaleDateString('hi-IN')}</div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  async function loadReelsAndPosts() {
+    const container = document.getElementById('reelsContainer');
+    if (!container) return;
+
+    container.innerHTML = `<div class="loading-status" style="text-align:center; color:#fff; padding:20px;">लोड हो रहा है... कृपया प्रतीक्षा करें</div>`;
+
+    try {
+      await fetchLiveMerchantsFromSupabase(true);
+      reelsVisibleCount = reelsBatchSize;
+      reelsHasMore = true;
+      renderDedicatedReels(activeReelsSearchQuery);
+    } catch (err) {
+      console.error('डेटा लोड होने में समस्या:', err.message);
+      container.innerHTML = `<div style="text-align:center; color:red; padding:20px;">डेटा लोड होने में विफल। कृपया पुनः प्रयास करें।</div>`;
     }
   }
 
@@ -2679,7 +2884,7 @@
       items.push({ id: String(store?.id || reel.merchant_id || index), reelId: String(reel.id || key), mediaUrl,
         isVideo: isMerchantVideo(reel, mediaUrl), musicUrl: getPostMusicUrl(reel), storeName: store?.store_name || store?.storeName || 'Star Shops Merchant',
         ratingCount: Number(reel.rating_count ?? reel.ratings_count ?? reel.rating ?? 0) || 0,
-        likeCount: Number(reel.like_count ?? reel.likes ?? 0) || 0,
+        likeCount: Number(reel.likes ?? 0) || 0,
         discount: cleanReelText(reel.caption || reel.description || store?.offer_details?.discount, 'विशेष ऑफ़र'),
         avatar: store?.avatar_url || store?.profile_image || store?.display_image || fallbackSalonImages[index % fallbackSalonImages.length],
         location: compactReelLocation(store?.address || store?.location || store?.city || 'दिल्ली'),
@@ -2690,17 +2895,7 @@
       addFromStore(storesById.get(String(reel.merchant_id)) || { id: reel.merchant_id }, [reel]);
     });
     (dedicatedReelPostAppendCache.length ? dedicatedReelPostAppendCache : (dynamicPostsList || [])).forEach(post => {
-      if (post.post_image) {
-        addFromStore({ ...post, avatar_url: post.avatar }, [{
-          id: post.media_id || `post_${post.id}_${post.post_image}`,
-          url: post.post_image,
-          caption: post.caption,
-          music_url: post.music_url,
-          rating_count: post.rating_count || 0,
-          like_count: post.like_count || 0,
-          created_at: post.created_at
-        }]);
-      }
+      // Reels tab में मुख्य पोस्ट इमेज नहीं, केवल merchant की वास्तविक reels दिखेंगी।
       addFromStore(post, post.reels);
     });
     if (!items.length) (liveSupabaseStores || []).forEach(store => addFromStore(store, store.reels));
@@ -3119,20 +3314,26 @@
   async function persistReelMetric(item, field, value) {
     if (!item?.reelId || !supabaseClient?.from) return;
     try {
+      // चूंकि लाइक्स के लिए अलग 'likes' टेबल है, इसलिए reels टेबल को patch करने की जरूरत नहीं है
+      if (field === 'like_count' || field === 'rating_count') {
+        console.log(`Reel metric ${field} handled locally for reel:`, item.reelId);
+        return;
+      }
       const { error } = await supabaseClient.from('reels').update({ [field]: value }).eq('id', item.reelId);
       if (error) console.warn(`Supabase ${field} update failed:`, error.message || error);
     } catch (error) { console.warn(`Supabase ${field} update failed:`, error); }
   }
   async function toggleDedicatedReelLike(item, reelElement) {
-    if (!item) return;
+    if (!item?.reelId || !currentUserPhone) return;
     const key = reelInteractionKey(item);
+    const result = await toggleReelLike(item.reelId, currentUserPhone);
+    if (!result) return;
+    const likesInfo = await getReelLikesInfo(item.reelId, currentUserPhone);
+    item.likeCount = likesInfo.likeCount;
     const likes = readReelInteractionMap('starshops_liked_reels');
-    const liked = !Boolean(likes[key]);
-    likes[key] = liked;
+    likes[key] = result.liked;
     localStorage.setItem('starshops_liked_reels', JSON.stringify(likes));
-    item.likeCount = Math.max(0, Number(item.likeCount || 0) + (liked ? 1 : -1));
-    reelElement?.classList.toggle('reel-is-liked', liked);
-    await persistReelMetric(item, 'like_count', item.likeCount);
+    reelElement?.classList.toggle('reel-is-liked', likesInfo.userLiked);
   }
   function rateWithStyle(button, event) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
@@ -3206,6 +3407,76 @@
     window.open(mapsUrl, '_blank', 'noopener,noreferrer');
   }
 
+  async function fetchAndRenderPosts() {
+    const container = document.getElementById('postsTabContent');
+    if (!container) return;
+
+    console.log("पोस्ट डेटा लोड हो रहा है...");
+    container.innerHTML = `<div style="text-align:center; padding:30px; color:#666;">Posts load ho rahi hain...</div>`;
+
+    try {
+      let { data, error } = await supabaseClient
+        .from('posts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error("पोस्ट लोड करने में एरर:", error.message);
+        data = [];
+      }
+
+      console.log("डेटा सफलतापूर्वक मिल गया:", data);
+
+      if (!data || data.length === 0) {
+        const legacyResult = await supabaseClient
+          .from('reels')
+          .select('*')
+          .order('created_at', { ascending: false });
+        if (legacyResult.error) console.error('Legacy posts fallback error:', legacyResult.error.message);
+        data = legacyResult.data || [];
+      }
+
+      // Sirf image/poster wali files ko filter karna (videos exclude karke)
+      const imagePosts = data.filter(item => {
+        const url = (item.media_url || item.image_url || item.video_url || '').toLowerCase();
+        return !url.endsWith('.mp4') && !url.endsWith('.mov') && !url.includes('video');
+      });
+
+      if (imagePosts.length === 0) {
+        container.innerHTML = `<div style="text-align:center; padding:30px; color:#666;">Koi tasveer/poster nahi mila</div>`;
+        return;
+      }
+
+      container.innerHTML = imagePosts.map(post => {
+        const merchant = Array.isArray(post.merchants) ? (post.merchants[0] || {}) : (post.merchants || findMerchantById(post.merchant_id) || {});
+        const merchantName = merchant.shop_name || merchant.name || 'Star Merchant';
+        const merchantAddress = merchant.address || 'Begampur, Delhi';
+        const merchantLogo = merchant.logo_url || 'https://via.placeholder.com/40';
+        const mediaUrl = post.media_url || post.image_url || post.video_url;
+
+        return `
+            <div style="background:#fff; margin:15px 12px; border-radius:14px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.08); border:1px solid #eaeaea;">
+                <div style="display:flex; align-items:center; padding:12px 15px; border-bottom:1px solid #f2f2f2;">
+                    <img src="${merchantLogo}" alt="Logo" style="width:42px; height:42px; border-radius:50%; object-fit:cover; margin-right:12px; border:1px solid #ddd;" onerror="this.src='https://via.placeholder.com/40'">
+                    <div style="flex-grow:1; overflow:hidden;">
+                        <div style="font-weight:bold; font-size:15px; color:#111; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">${merchantName}</div>
+                        <div style="font-size:12px; color:#666; margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">📍 ${merchantAddress}</div>
+                    </div>
+                </div>
+                <div style="background:#000; width:100%; display:flex; justify-content:center; align-items:center;">
+                    <img src="${mediaUrl}" alt="Merchant Poster" style="width:100%; max-height:450px; height:auto; object-fit:contain; display:block;">
+                </div>
+                ${post.caption ? `<div style="padding:12px 15px; font-size:14px; color:#333; background:#fafafa; border-top:1px solid #f2f2f2;">${post.caption}</div>` : ''}
+            </div>
+        `;
+      }).join('');
+
+    } catch (err) {
+      console.error("Posts fetch error:", err.message);
+      container.innerHTML = `<div style="text-align:center; padding:30px; color:red;">Posts load karne mein error aaya hai</div>`;
+    }
+  }
+
   function switchMainTab(tabName, clickedNavItem) {
     if (activePostMusicAudio) stopPostMusic();
     document.querySelectorAll('#reelsContainer video').forEach(video => video.pause());
@@ -3216,6 +3487,11 @@
     
     document.getElementById(`tab-${tabName}`).classList.add('active');
     if (clickedNavItem) clickedNavItem.classList.add('active');
+    if (tabName === 'posts') loadReelsAndPosts();
+    if (tabName === 'image-posts') {
+      if (dynamicPostsList.length) renderPostsFeed(dynamicPostsList);
+      else fetchLiveMerchantsFromSupabase(false);
+    }
     if (tabName === 'alerts') markVisibleAlertsAsSeen();
     if (tabName === 'profile') loadLocalUserStats();
     window.scrollTo(0, 0);
@@ -3296,7 +3572,6 @@
     }
     
     const store = findMerchantById(cardId);
-    if (store && isHighDiscountMerchant(store) && !userStepsData.unlockedHighDiscount) return;
     if (store) {
       let sLat = store.latitude || store.lat; 
       let sLon = store.longitude || store.lng || store.lon;
@@ -3364,6 +3639,7 @@
             userStepsData.currentSteps = userStepsData.targetSteps;
             if (!userStepsData.unlockedHighDiscount) { 
                 userStepsData.unlockedHighDiscount = true; 
+                activateHighDiscountZoneUIMode();
                 setTimeout(openHighDiscountUnlockModal, 1200); 
             }
           }
@@ -3617,9 +3893,5 @@
   });
 
 </script>
-   <!-- Eruda Mobile Console Script -->
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
-
 </body>
 </html>
