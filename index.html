@@ -1000,7 +1000,7 @@
     <div id="offersContainer" style="text-align:left; margin-bottom:12px;"><div style="font-size:11px; color:#6B7280; padding:10px 0;">ऑफर्स लोड हो रहे हैं...</div></div>
     
     <div style="font-size: 13px; font-weight: 900; color: #111827; text-align: left; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
-      <span>🎬</span> <span>मर्चेंट रील सेक्शन:</span>
+      <span>🏪</span> <span>मर्चेंट प्रोफाइल:</span>
     </div>
 
     <div id="merchantGalleryAreaWrapper">
@@ -2603,48 +2603,33 @@ async function toggleReelLike(reelId, userId) {
       if (legacyStoreError) console.error('Legacy merchant fetch error:', legacyStoreError);
       store = legacyStore || null;
     }
-    let profile = null;
-    try {
-      const { data, error } = await supabaseClient
-        .from('merchant_profiles')
-        .select('*')
-        .eq('merchant_id', merchantId)
-        .maybeSingle();
-      if (error) console.error('Profile fetch error:', error);
-      profile = data || null;
-    } catch (error) {
-      console.error('Profile fetch error:', error);
-    }
-
-    profile = profile || store;
-    if (!profile) {
-      console.error('Merchant profile not found:', merchantId);
+    if (!store) {
+      console.error('Merchant not found:', merchantId);
       return;
     }
 
-    const profileStoreName = profile.store_name || profile.shop_name || profile.name || 'स्टोर';
-    const profileCategory = profile.category || store?.category || 'सलून';
-    const profileAddress = profile.address || profile.location || store?.address || 'दिल्ली';
-    const profileLogo = profile.logo_url || profile.display_image || profile.image_url || store?.display_image || fallbackSalonImages[0];
-    const profilePhone = profile.phone || profile.mobile || profile.phone_number || 'उपलब्ध नहीं';
-    const safeOffer = store?.offer_details?.discount || profile.offer_title || '✨ बेहतरीन सर्विस, सबसे सही दाम';
-    const safeDesc = store?.offer_details?.conditions || profile.offer_details || profile.description || 'सबसे सही दाम और शानदार काम';
+    const storeName = store.store_name || 'स्टोर';
+    const storeCategory = store.category || 'सलून';
+    const storeAddress = store.address || store.location || 'दिल्ली';
+    const storePhone = store.phone || store.mobile || 'उपलब्ध नहीं';
+    const mainThumbnailUrl = (store.image_url && store.image_url.trim() !== '')
+      ? store.image_url
+      : (store.display_image || fallbackSalonImages[0]);
+    const safeOffer = store.offer_details?.discount || '✨ बेहतरीन सर्विस, सबसे सही दाम';
+    const safeDesc = store.offer_details?.conditions || store.description || 'सबसे सही दाम और शानदार काम';
 
-    document.getElementById('pubProfileStoreName').innerText = profileStoreName;
-    document.getElementById('pubProfileCategory').innerText = `📂 ${profileCategory}`;
-    document.getElementById('pubProfileImg').src = profileLogo;
-    document.getElementById('pubProfileAddress').innerText = profileAddress;
-    document.getElementById('pubProfilePhone').innerText = profilePhone;
+    document.getElementById('pubProfileStoreName').innerText = storeName;
+    document.getElementById('pubProfileCategory').innerText = `📂 ${storeCategory}`;
+    document.getElementById('pubProfileImg').src = mainThumbnailUrl;
+    document.getElementById('pubProfileAddress').innerText = storeAddress;
+    document.getElementById('pubProfilePhone').innerText = storePhone;
     document.getElementById('pubProfileCaption').innerText = `ऑफर: ${safeOffer}\nविवरण: ${safeDesc}`;
 
     const wrapperContainer = document.getElementById('merchantGalleryAreaWrapper');
     document.getElementById('merchantPublicProfileModal').classList.add('open');
     loadMerchantOffers(merchantId);
 
-    if (store?.reels && store.reels.length > 0) { renderStoryStyleGrid(store.reels, store, wrapperContainer); } 
-    else { 
-      wrapperContainer.innerHTML = `<div class="merchant-gallery-grid" style="grid-template-columns: 1fr;"><div class="gallery-thumb-item" style="aspect-ratio: 16/9;"><img src="${profileLogo}" style="width:100%; height:100%; object-fit:cover;" alt="Store Photo"></div></div>`; 
-    }
+    wrapperContainer.innerHTML = `<div class="merchant-gallery-grid" style="grid-template-columns: 1fr;"><div class="gallery-thumb-item" style="aspect-ratio: 16/9; background:#111;"><img src="${mainThumbnailUrl}" style="width:100%; height:100%; object-fit:cover; display:block;" alt="Store Banner"></div></div>`;
   }
 
   async function loadMerchantOffers(merchantId) {
