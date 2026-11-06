@@ -289,6 +289,20 @@
     .reel-actions-bar .action-btn { background: transparent; border: 0; border-radius: 0; width: 52px; height: 52px; padding: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; color: #fff; cursor: pointer; backdrop-filter: none; -webkit-backdrop-filter: none; box-shadow: none; transition: transform .25s ease, color .25s ease; }
     .reel-actions-bar .action-btn:active { transform: scale(.85); }
     .reel-actions-bar .action-btn .reel-sketch-icon { width: 24px; height: 24px; }
+    /* स्टार को व्हाइट और सॉलिड करने के लिए */
+    .action-btn.starred svg,
+    .action-btn.starred i,
+    .action-btn.rated svg,
+    .action-btn.rated i {
+      fill: #FFFFFF !important;
+      color: #FFFFFF !important;
+    }
+    /* रिफ्रेश/रीसायकल आइकन को एक बार घुमाने के लिए */
+    @keyframes spin-once {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .is-spinning { animation: spin-once 0.8s ease-in-out; }
     .reel-actions-bar .star-icon-wrapper { display: inline-block; transition: transform .6s cubic-bezier(.4,0,.2,1); line-height: 1; }
     .reel-actions-bar .star-icon-wrapper.spin { transform: rotate(360deg) scale(1.3); }
     .reel-actions-bar .label-text { font-size: 8.5px; margin-top: 1px; font-weight: 500; line-height: 1; color: #e2e8f0; }
@@ -2109,7 +2123,7 @@ async function toggleReelLike(reelId, userId) {
       let mediaHtml = post.isVideo 
         ? `<video src="${post.post_image}#t=0.1" style="width:100%; height:100%; max-height:360px; object-fit:cover; display:block;" muted playsinline loop preload="metadata"></video>
            <div style="position:absolute; top:10px; right:10px; background:rgba(0,0,0,0.7); color:#fff; font-size:10px; padding:4px 8px; border-radius:6px; font-weight:bold;">🎬 रील</div>`
-        : `<img src="${post.post_image}" style="width:100%; height:100%; max-height:360px; object-fit:cover; display:block;" alt="Post Image">`;
+        : `<img src="${post.post_image}" loading="${globalPostIndex < 3 ? 'eager' : 'lazy'}" style="width:100%; height:100%; max-height:360px; object-fit:cover; display:block;" alt="Post Image">`;
       const postMusicUrl = getPostMusicUrl(post);
       const musicControlHtml = postMusicUrl
         ? `<div class="post-music-row"><button type="button" class="post-music-btn" data-music-url="${encodeURIComponent(postMusicUrl)}" onclick="event.stopPropagation(); togglePostMusic(this)" aria-pressed="false">♫ संगीत चलाएँ</button></div>`
@@ -2902,6 +2916,51 @@ async function toggleReelLike(reelId, userId) {
     return items;
   }
 
+  // Reels watch history: 7 दिन बाद अपने-आप साफ होगी।
+  // Watch IDs को normalize करके मौजूदा reel IDs के साथ जोड़ा गया है।
+  function getCleanWatchHistory(storageKey) {
+    try {
+      const saved = JSON.parse(localStorage.getItem(storageKey) || '{"items":[],"timestamp":0}');
+      const sevenDays = 7 * 24 * 60 * 60 * 1000;
+      if (!Array.isArray(saved.items) || Date.now() - Number(saved.timestamp || 0) > sevenDays) {
+        localStorage.removeItem(storageKey);
+        return [];
+      }
+      return saved.items.map(String);
+    } catch (_) {
+      localStorage.removeItem(storageKey);
+      return [];
+    }
+  }
+
+  function saveWatchHistory(storageKey, watchedIds) {
+    const uniqueIds = [...new Set((watchedIds || []).map(String))];
+    localStorage.setItem(storageKey, JSON.stringify({ items: uniqueIds, timestamp: Date.now() }));
+  }
+
+  function shuffleArray(array) {
+    const arr = [...(array || [])];
+    for (let index = arr.length - 1; index > 0; index -= 1) {
+      const randomIndex = Math.floor(Math.random() * (index + 1));
+      [arr[index], arr[randomIndex]] = [arr[randomIndex], arr[index]];
+    }
+    return arr;
+  }
+
+  function getFreshShuffledReels(items) {
+    const watched = getCleanWatchHistory('star_shop_reels_history');
+    const fresh = items.filter(item => !watched.includes(String(item.reelId || item.mediaUrl)));
+    // सभी देख लिए हों तो नया cycle शुरू करें।
+    return shuffleArray(fresh.length ? fresh : items);
+  }
+
+  function markReelAsWatched(item) {
+    const id = String(item?.reelId || item?.mediaUrl || '');
+    if (!id) return;
+    const watched = getCleanWatchHistory('star_shop_reels_history');
+    if (!watched.includes(id)) saveWatchHistory('star_shop_reels_history', [...watched, id]);
+  }
+
   function getReelItemFromEvent(event) {
     const item = event?.target?.closest?.('.reel-item');
     return item ? reelsFeedItems[Number(item.dataset.reelIndex)] : null;
@@ -2941,7 +3000,7 @@ async function toggleReelLike(reelId, userId) {
     const previousVideo = preservePlayback ? container.querySelector('.reel-item.reel-media-playing video') : null;
     const playbackSnapshot = previousVideo ? { index: previousVideo.closest('.reel-item')?.dataset.reelIndex, time: previousVideo.currentTime, paused: previousVideo.paused } : null;
     activeReelsSearchQuery = String(query || '').trim();
-    const allItems = getDedicatedReelsItems();
+    const allItems = getFreshShuffledReels(getDedicatedReelsItems());
     const term = activeReelsSearchQuery.toLowerCase();
     const filteredItems = allItems.filter(item => !term || `${item.storeName} ${item.discount} ${item.location}`.toLowerCase().includes(term));
     reelsFeedItems = filteredItems.slice(0, reelsVisibleCount);
@@ -2959,7 +3018,7 @@ async function toggleReelLike(reelId, userId) {
     }
     container.innerHTML = reelsFeedItems.map((item, index) => {
       const saved = savedReelsList.some(savedItem => savedItem.mediaUrl === item.mediaUrl || (!savedItem.mediaUrl && savedItem.store === item.storeName && savedItem.offer === item.discount));
-      const media = item.isVideo ? `<video src="${escapeReelsHtml(item.mediaUrl)}" preload="auto" playsinline autoplay muted loop></video>` : `<img src="${escapeReelsHtml(item.mediaUrl)}" alt="${escapeReelsHtml(item.storeName)}">`;
+      const media = item.isVideo ? `<video src="${escapeReelsHtml(item.mediaUrl)}" preload="${index < 2 ? 'auto' : 'metadata'}" playsinline autoplay muted loop></video>` : `<img src="${escapeReelsHtml(item.mediaUrl)}" alt="${escapeReelsHtml(item.storeName)}" loading="${index < 3 ? 'eager' : 'lazy'}">`;
       return `<div class="reel-item" data-reel-index="${index}" onclick="handleScreenTap(event)">${media}
         <div class="reel-top-controls ui-element"><div class="reel-search-cluster"><button class="top-icon-btn search-trigger" onclick="openSearchFilter(event)" title="सर्च करें" aria-label="सर्च करें">${reelSketchIcon('search')}</button><div class="reel-inline-search"><input type="search" enterkeyhint="search" value="${escapeReelsHtml(activeReelsSearchQuery)}" placeholder="दुकान या लोकेशन खोजें" onkeydown="submitInlineReelsSearch(event, this)" aria-label="रील्स सर्च"><span class="search-submit-icon">${reelSketchIcon('search')}</span></div></div></div>
         <div class="reel-actions-bar ui-element"><button class="action-btn star-rating-btn ${isReelRated(item) ? 'rated' : ''}" onclick="rateWithStyle(this, event)" title="रेटिंग दें" aria-label="रेटिंग दें"><span class="star-icon-wrapper">${reelSketchIcon('star')}</span><span class="rating-status"><span class="count total-like-count" style="${item.ratingCount > 0 ? '' : 'display:none;'}">${formatCompactCount(item.ratingCount)}</span></span><span class="label-text">रेटिंग</span></button><button class="action-btn" onclick="refreshReelContent(event)" title="रील्स रिफ्रेश करें" aria-label="रील्स रिफ्रेश करें">${reelSketchIcon('refresh')}<span class="label-text">रीफ्रेश</span></button><button class="action-btn" onclick="shareReelContent(event)" title="रील्स शेयर करें" aria-label="रील्स शेयर करें">${reelSketchIcon('share')}<span class="label-text">शेयर</span></button><button class="action-btn lock-save-btn ${saved ? 'is-saved locked' : ''}" onclick="toggleLockSave(this, event)" title="सुरक्षित करें" aria-label="सुरक्षित करें"><span class="lock-icon">${reelSketchIcon(saved ? 'lock' : 'unlock')}</span><span class="label-text">सुरक्षित</span></button></div>
@@ -3133,21 +3192,23 @@ async function toggleReelLike(reelId, userId) {
         const video = reelItem.querySelector('video');
         const item = reelsFeedItems[Number(reelItem.dataset.reelIndex)];
 
-        if (entry.isIntersecting && entry.intersectionRatio >= 0.65) {
+        // Reel कम-से-कम 60% दिखाई दे तो play, वरना pause।
+        if (entry.isIntersecting && entry.intersectionRatio >= 0.6) {
           if (dedicatedActiveReelElement && dedicatedActiveReelElement !== reelItem) {
             dedicatedActiveReelElement.querySelector('video')?.pause();
             dedicatedActiveReelElement.classList.remove('reel-media-playing');
           }
           dedicatedActiveReelElement = reelItem;
           reelItem.classList.add('reel-media-playing');
+          markReelAsWatched(item);
           if (video) {
             video.muted = false;
-            video.play().catch(() => {});
+            video.play().catch(error => console.log('Auto-play restricted:', error));
           }
           if (dedicatedReelMusicStarted) {
             syncDedicatedReelMusic(item, true);
           }
-        } else if (entry.intersectionRatio <= 0.05) {
+        } else {
           reelItem.classList.remove('reel-media-playing');
           if (video) {
             video.pause();
@@ -3157,7 +3218,7 @@ async function toggleReelLike(reelId, userId) {
           }
         }
       });
-    }, { root: container, threshold: [0.65] });
+    }, { root: container, threshold: [0.6] });
     container.querySelectorAll('.reel-item').forEach(reel => {
       dedicatedReelObserver.observe(reel);
       const video = reel.querySelector('video');
@@ -3298,7 +3359,42 @@ async function toggleReelLike(reelId, userId) {
       }
     }
   }
-  function refreshReelContent(event) { return resetSearchFilter(event); }
+  // स्टार बटन पर क्लिक/स्टेट बदलने का साझा helper
+  function toggleStar(buttonElement, event = null, forcedState = null) {
+    if (!buttonElement) return false;
+    if (buttonElement.classList.contains('star-rating-btn') && forcedState === null) {
+      return rateWithStyle(buttonElement, event);
+    }
+    const isStarred = forcedState === null
+      ? !buttonElement.classList.contains('starred')
+      : Boolean(forcedState);
+    buttonElement.classList.toggle('starred', isStarred);
+    console.log('Star status:', isStarred);
+    return isStarred;
+  }
+
+  // रीसायकल/रिफ्रेश आइकन को एक बार घुमाने का साझा helper
+  function triggerRefresh(buttonElement, event = null) {
+    if (!buttonElement) return;
+    const icon = buttonElement.querySelector('svg') || buttonElement.querySelector('i') || buttonElement;
+    if (icon.classList.contains('is-spinning')) return;
+    icon.classList.add('is-spinning');
+    console.log('Refreshing content...');
+    if (buttonElement.closest('.reel-actions-bar')) {
+      // पहले animation पूरी होने दें; तुरंत render करने पर नया DOM icon को बदल देता था।
+      setTimeout(() => {
+        icon.classList.remove('is-spinning');
+        resetSearchFilter(event);
+      }, 800);
+      return;
+    }
+    setTimeout(() => icon.classList.remove('is-spinning'), 800);
+  }
+
+  function refreshReelContent(event) {
+    const button = event?.target?.closest?.('.reel-actions-bar .action-btn');
+    return triggerRefresh(button, event);
+  }
   function shareReelContent(event) { return shareReel(event); }
   function reelInteractionKey(item) { return String(item?.reelId || item?.mediaUrl || ''); }
   function formatCompactCount(value) {
@@ -3351,6 +3447,7 @@ async function toggleReelLike(reelId, userId) {
       totalCount.style.display = item?.ratingCount > 0 ? 'inline' : 'none';
     }
     button.classList.toggle('rated', rated);
+    toggleStar(button, null, rated);
     const star = button.querySelector('.star-icon-wrapper');
     star?.classList.remove('rating-flash');
     requestAnimationFrame(() => star?.classList.add('rating-flash'));
