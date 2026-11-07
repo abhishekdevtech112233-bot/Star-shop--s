@@ -1093,8 +1093,8 @@
     if (!gpsResolvedOnce && !manualLocationSelected && !gpsScanInterval) startContinuousGPSScan();
   }
 
-  const SUPABASE_URL = "https://gejrzpflcuvlbpedliwq.supabase.co";
-  const SUPABASE_ANON_KEY = "sb_publishable_dw9J2AX0nd3SxPrRy9JGCg_YqS8ZfUF";
+  const SUPABASE_URL = "https://fzerbvhdaqifaeabdjkj.supabase.co";
+  const SUPABASE_ANON_KEY = "sb_publishable_ajo-GdO4PcqhQDTcde9m7w_Ib6kzaVM";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 // किसी रील के कुल लाइक्स लाने और चेक करने के लिए कि यूजर ने लाइक किया है या नहीं
 async function getReelLikesInfo(reelId, userId) {
@@ -1195,7 +1195,7 @@ async function toggleReelLike(reelId, userId) {
     if (supabaseCatalogLoadPromise) return supabaseCatalogLoadPromise;
     supabaseCatalogLoadPromise = (async () => {
       const [merchants, posts, reels] = await Promise.all([
-        fetchCompleteSupabaseTable('merchants'), fetchCompleteSupabaseTable('posts'), fetchCompleteSupabaseTable('reels')
+        fetchCompleteSupabaseTable('merchants'), fetchCompleteSupabaseTable('merchant_posts'), fetchCompleteSupabaseTable('merchant_reels')
       ]);
       supabaseCatalogCache = { merchants, posts, reels, loadedAt: Date.now() };
       return supabaseCatalogCache;
@@ -1205,7 +1205,7 @@ async function toggleReelLike(reelId, userId) {
   }
 
   function applyRealtimeRowToCatalog(payload) {
-    const tableKey = payload?.table === 'merchants' ? 'merchants' : payload?.table === 'posts' ? 'posts' : payload?.table === 'reels' ? 'reels' : '';
+    const tableKey = payload?.table === 'merchants' ? 'merchants' : payload?.table === 'merchant_posts' ? 'posts' : payload?.table === 'merchant_reels' ? 'reels' : '';
     if (!tableKey || !supabaseCatalogCache.loadedAt) return;
     const isDelete = payload.eventType === 'DELETE';
     const row = isDelete ? payload.old : payload.new;
@@ -1364,6 +1364,7 @@ async function toggleReelLike(reelId, userId) {
         currentShopperName = savedUser.name;
         currentUserPhone = savedUser.phone;
         document.getElementById('profileDisplayUserName').innerText = currentShopperName;
+        syncConsumerProfileToSupabase();
     } else {
         document.getElementById('authModalOverlay').classList.add('open');
     }
@@ -1621,8 +1622,8 @@ async function toggleReelLike(reelId, userId) {
 
     realtimeSyncChannel = supabaseClient.channel('star-shops-live-cards')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'merchants' }, queueBackgroundAutoSearch)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'posts' }, queueBackgroundAutoSearch)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'reels' }, queueBackgroundAutoSearch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'merchant_posts' }, queueBackgroundAutoSearch)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'merchant_reels' }, queueBackgroundAutoSearch)
       .subscribe();
   }
 
@@ -1719,6 +1720,27 @@ async function toggleReelLike(reelId, userId) {
     }, 60);
   }
 
+  async function syncConsumerProfileToSupabase() {
+    if (!deviceUserId) return;
+    const profile = {
+      device_uuid: String(deviceUserId),
+      name: String(currentShopperName || ''),
+      phone: String(currentUserPhone || ''),
+      total_footprints: Math.max(0, Number(userFootprints) || 0),
+      unlocked_high_discount: Boolean(userStepsData?.unlockedHighDiscount)
+    };
+    try {
+      const { data: existing, error: lookupError } = await supabaseClient.from('consumers').select('id').eq('device_uuid', profile.device_uuid).maybeSingle();
+      if (lookupError) throw lookupError;
+      const result = existing
+        ? await supabaseClient.from('consumers').update(profile).eq('id', existing.id)
+        : await supabaseClient.from('consumers').insert(profile);
+      if (result.error) throw result.error;
+    } catch (error) {
+      console.warn('Consumer profile sync failed:', error.message || error);
+    }
+  }
+
   function registerConsumerUser() {
     const n = document.getElementById('authNameInput').value.trim();
     const p = document.getElementById('authPhoneInput').value.trim();
@@ -1727,6 +1749,7 @@ async function toggleReelLike(reelId, userId) {
     const userData = {name: n, phone: p};
     localStorage.setItem('starshops_consumer_user', JSON.stringify(userData));
     currentShopperName = n; currentUserPhone = p;
+    syncConsumerProfileToSupabase();
     document.getElementById('profileDisplayUserName').innerText = currentShopperName;
     document.getElementById('authModalOverlay').classList.remove('open');
     
@@ -1859,8 +1882,18 @@ async function toggleReelLike(reelId, userId) {
     
     try {
       const catalog = await getSupabaseCatalog(Boolean(isSilent));
-      const allStores = catalog.merchants || [];
-      appendUniqueReelBatch(dedicatedReelMediaAppendCache, catalog.reels || [], reel => `${reel?.merchant_id || ''}|${getMerchantMediaUrl(reel) || reel?.id || ''}`);
+      const allStores = (catalog.merchants || []).map(store => ({
+        ...store,
+        store_name: store.shop_name || store.store_name || 'स्टोर',
+        status: store.is_open_today === false ? 'closed' : 'open',
+        display_image: store.profile_image_url || store.image_url || store.display_image || '',
+        image_url: store.profile_image_url || store.image_url || '',
+        offer_details: { discount: store.offer_text || store.offer_details?.discount || '', conditions: store.description || store.offer_details?.conditions || '' },
+        location: store.address || store.location || ''
+      }));
+      const normalizedReels = (catalog.reels || []).map(reel => ({ ...reel, video_url: reel.reel_url || reel.video_url || '' }));
+      const normalizedPosts = (catalog.posts || []).map(post => ({ ...post, image_url: post.post_image_url || post.image_url || '' }));
+      appendUniqueReelBatch(dedicatedReelMediaAppendCache, normalizedReels, reel => `${reel?.merchant_id || ''}|${getMerchantMediaUrl(reel) || reel?.id || ''}`);
       const allReels = dedicatedReelMediaAppendCache;
       const reelsByMerchantId = new Map();
       allReels.forEach(reel => {
@@ -1870,20 +1903,20 @@ async function toggleReelLike(reelId, userId) {
       });
       searchableSupabaseStores = allStores.map((store, index) => ({
         ...store,
-        display_image: (store.image_url && String(store.image_url).trim()) ? store.image_url : (store.display_image || fallbackSalonImages[index % fallbackSalonImages.length]),
+        display_image: (store.profile_image_url && String(store.profile_image_url).trim()) ? store.profile_image_url : (store.image_url || store.display_image || fallbackSalonImages[index % fallbackSalonImages.length]),
         reels: (reelsByMerchantId.get(String(store.id)) || []).filter(isMerchantVideo)
       }));
-      const openStores = searchableSupabaseStores.filter(store => (store.status || '').toLowerCase() !== 'closed' && (store.status || '').toLowerCase() !== 'false');
+      const openStores = searchableSupabaseStores.filter(store => store.is_open_today !== false);
 
       dynamicPostsList = []; liveSupabaseStores = [];
 
       openStores.forEach((store, index) => {
         const storeId = store.id;
-        const merchantMedia = reelsByMerchantId.get(String(storeId)) || [];
+        const merchantMedia = [...(reelsByMerchantId.get(String(storeId)) || []), ...normalizedPosts.filter(post => String(post.merchant_id) === String(storeId))];
 
         const storeVideos = merchantMedia.filter(m => isMerchantVideo(m));
 
-        store.display_image = (store.image_url && store.image_url.trim() !== '') ? store.image_url : fallbackSalonImages[index % fallbackSalonImages.length];
+        store.display_image = (store.profile_image_url && store.profile_image_url.trim() !== '') ? store.profile_image_url : (store.image_url || fallbackSalonImages[index % fallbackSalonImages.length]);
         
         store.reels = storeVideos; 
 
@@ -1893,7 +1926,7 @@ async function toggleReelLike(reelId, userId) {
 
         if (merchantMedia.length > 0) {
           merchantMedia.forEach(media => {
-            let pUrl = getMerchantMediaUrl(media);
+            let pUrl = media.post_image_url || getMerchantMediaUrl(media);
             let isVideo = isMerchantVideo(media, pUrl);
             if (!pUrl) return;
             
@@ -1904,7 +1937,7 @@ async function toggleReelLike(reelId, userId) {
 
             dynamicPostsList.push({
               id: storeId,
-              storeName: store.store_name || 'स्टोर',
+              storeName: store.shop_name || store.store_name || 'स्टोर',
               category: store.category || 'जनरल स्टोर',
               avatar: store.display_image,
               post_image: pUrl,
@@ -1923,7 +1956,7 @@ async function toggleReelLike(reelId, userId) {
           let pCap = store.offer_details?.discount || store.description || "✨ बेहतरीन सर्विस, सबसे सही दाम";
           dynamicPostsList.push({
               id: storeId,
-              storeName: store.store_name || 'स्टोर',
+              storeName: store.shop_name || store.store_name || 'स्टोर',
               category: store.category || 'जनरल स्टोर',
               avatar: store.display_image,
               post_image: store.display_image,
@@ -2608,15 +2641,13 @@ async function toggleReelLike(reelId, userId) {
       return;
     }
 
-    const storeName = store.store_name || 'स्टोर';
+    const storeName = store.shop_name || store.store_name || 'स्टोर';
     const storeCategory = store.category || 'सलून';
     const storeAddress = store.address || store.location || 'दिल्ली';
     const storePhone = store.phone || store.mobile || 'उपलब्ध नहीं';
-    const mainThumbnailUrl = (store.image_url && store.image_url.trim() !== '')
-      ? store.image_url
-      : (store.display_image || fallbackSalonImages[0]);
-    const safeOffer = store.offer_details?.discount || '✨ बेहतरीन सर्विस, सबसे सही दाम';
-    const safeDesc = store.offer_details?.conditions || store.description || 'सबसे सही दाम और शानदार काम';
+    const mainThumbnailUrl = (store.profile_image_url || store.image_url || store.display_image || fallbackSalonImages[0]);
+    const safeOffer = store.offer_text || store.offer_details?.discount || '✨ बेहतरीन सर्विस, सबसे सही दाम';
+    const safeDesc = store.description || store.offer_details?.conditions || 'सबसे सही दाम और शानदार काम';
 
     document.getElementById('pubProfileStoreName').innerText = storeName;
     document.getElementById('pubProfileCategory').innerText = `📂 ${storeCategory}`;
@@ -2637,47 +2668,20 @@ async function toggleReelLike(reelId, userId) {
     if (!offersContainer) return;
     offersContainer.innerHTML = `<div style="font-size:11px; color:#6B7280; padding:10px 0;">ऑफर्स लोड हो रहे हैं...</div>`;
 
-    let { data, error } = await supabaseClient
-      .from('merchant_offers')
-      .select('offer_title, offer_details, banner_url, expires_at')
-      .eq('merchant_id', merchantId)
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Offers fetch error:', error);
-      data = [];
-    }
-
-    if (!data || data.length === 0) {
-      const { data: legacyMerchant, error: legacyError } = await supabaseClient
-        .from('merchants')
-        .select('offer_details, description, store_name')
-        .eq('id', merchantId)
-        .maybeSingle();
-      if (legacyError) console.error('Legacy offers fetch error:', legacyError);
-      const legacyOffer = legacyMerchant?.offer_details;
-      if (legacyMerchant && legacyOffer) {
-        data = [{
-          offer_title: legacyMerchant.store_name || 'विशेष ऑफर',
-          offer_details: typeof legacyOffer === 'object' ? (legacyOffer.conditions || legacyOffer.discount || legacyMerchant.description || '') : String(legacyOffer),
-          banner_url: '',
-          expires_at: legacyOffer.expires_at || ''
-        }];
-      }
-    }
-
-    if (!data || data.length === 0) {
+    const store = findMerchantById(merchantId);
+    const offerText = store?.offer_text || store?.offer_details?.discount || '';
+    const description = store?.description || store?.offer_details?.conditions || '';
+    if (!offerText && !description) {
       offersContainer.innerHTML = `<div style="font-size:11px; color:#6B7280; padding:10px 0;">अभी कोई ऑफर उपलब्ध नहीं है।</div>`;
       return;
     }
-
+    const data = [{ offer_title: store?.shop_name || store?.store_name || 'विशेष ऑफर', offer_details: [offerText, description].filter(Boolean).join(' — '), banner_url: store?.profile_image_url || '' }];
     offersContainer.innerHTML = data.map(offer => `
       <div class="offer-card" style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:12px; overflow:hidden; margin-bottom:10px;">
         ${offer.banner_url ? `<img src="${offer.banner_url}" alt="Offer Banner" style="width:100%; max-height:180px; object-fit:contain; display:block; background:#fff;">` : ''}
         <div style="padding:10px 12px;">
           <h3 style="font-size:14px; font-weight:900; color:#92400E; margin:0 0 4px;">${offer.offer_title || 'विशेष ऑफर'}</h3>
           <p style="font-size:12px; color:#4B5563; margin:0; line-height:1.45;">${offer.offer_details || ''}</p>
-          ${offer.expires_at ? `<div style="font-size:10px; color:#DC2626; font-weight:700; margin-top:6px;">⏳ समाप्ति: ${new Date(offer.expires_at).toLocaleDateString('hi-IN')}</div>` : ''}
         </div>
       </div>
     `).join('');
@@ -2882,7 +2886,7 @@ async function toggleReelLike(reelId, userId) {
       const lon = store?.longitude ?? store?.lng ?? store?.lon;
       items.push({ id: String(store?.id || reel.merchant_id || index), reelId: String(reel.id || key), mediaUrl,
         isVideo: isMerchantVideo(reel, mediaUrl), musicUrl: getPostMusicUrl(reel), storeName: store?.store_name || store?.storeName || 'Star Shops Merchant',
-        ratingCount: Number(reel.rating_count ?? reel.ratings_count ?? reel.rating ?? 0) || 0,
+        ratingCount: Number(reel.likes_count ?? reel.rating_count ?? reel.ratings_count ?? reel.rating ?? 0) || 0,
         likeCount: Number(reel.likes ?? 0) || 0,
         discount: cleanReelText(reel.caption || reel.description || store?.offer_details?.discount, 'विशेष ऑफ़र'),
         avatar: store?.avatar_url || store?.profile_image || store?.display_image || fallbackSalonImages[index % fallbackSalonImages.length],
@@ -2937,6 +2941,42 @@ async function toggleReelLike(reelId, userId) {
     const fresh = items.filter(item => !watched.includes(String(item.reelId || item.mediaUrl)));
     // सभी देख लिए हों तो नया cycle शुरू करें।
     return shuffleArray(fresh.length ? fresh : items);
+  }
+
+  const syncedReelViewsThisSession = new Set();
+  const reelJourneyRowsByKey = new Map();
+  async function syncReelViewAnalytics(item) {
+    if (!item?.reelId || !item?.id || syncedReelViewsThisSession.has(String(item.reelId))) return;
+    syncedReelViewsThisSession.add(String(item.reelId));
+    const now = new Date().toISOString();
+    try {
+      const viewResult = await supabaseClient.from('merchant_views').insert({
+        merchant_id: item.id, reel_id: item.reelId, user_device_id: String(deviceUserId), view_count: 1
+      });
+      if (viewResult.error) throw viewResult.error;
+      const journeyResult = await supabaseClient.from('merchant_footprint_analytics').insert({
+        merchant_id: item.id, reel_id: item.reelId, user_device_id: String(deviceUserId),
+        watched_at: now, map_clicked: false, conversion_status: 'viewed'
+      }).select('id').maybeSingle();
+      if (journeyResult.error) throw journeyResult.error;
+      if (journeyResult.data?.id) reelJourneyRowsByKey.set(`${item.id}|${item.reelId}`, journeyResult.data.id);
+    } catch (error) {
+      console.warn('Reel view analytics sync failed:', error.message || error);
+    }
+  }
+
+  async function syncReelMapClick(merchantId, reelId) {
+    if (!merchantId || !reelId) return;
+    const rowId = reelJourneyRowsByKey.get(`${merchantId}|${reelId}`);
+    if (!rowId) return;
+    try {
+      const { error } = await supabaseClient.from('merchant_footprint_analytics').update({
+        map_clicked: true, map_opened_at: new Date().toISOString()
+      }).eq('id', rowId);
+      if (error) throw error;
+    } catch (error) {
+      console.warn('Map click analytics sync failed:', error.message || error);
+    }
   }
 
   function markReelAsWatched(item) {
@@ -3008,7 +3048,7 @@ async function toggleReelLike(reelId, userId) {
         <div class="reel-top-controls ui-element"><div class="reel-search-cluster"><button class="top-icon-btn search-trigger" onclick="openSearchFilter(event)" title="सर्च करें" aria-label="सर्च करें">${reelSketchIcon('search')}</button><div class="reel-inline-search"><input type="search" enterkeyhint="search" value="${escapeReelsHtml(activeReelsSearchQuery)}" placeholder="दुकान या लोकेशन खोजें" onkeydown="submitInlineReelsSearch(event, this)" aria-label="रील्स सर्च"><span class="search-submit-icon">${reelSketchIcon('search')}</span></div></div></div>
         <div class="reel-actions-bar ui-element"><button class="action-btn star-rating-btn ${isReelRated(item) ? 'rated' : ''}" onclick="rateWithStyle(this, event)" title="रेटिंग दें" aria-label="रेटिंग दें"><span class="star-icon-wrapper">${reelSketchIcon('star')}</span><span class="rating-status"><span class="count total-like-count" style="${item.ratingCount > 0 ? '' : 'display:none;'}">${formatCompactCount(item.ratingCount)}</span></span><span class="label-text">रेटिंग</span></button><button class="action-btn" onclick="refreshReelContent(event)" title="रील्स रिफ्रेश करें" aria-label="रील्स रिफ्रेश करें">${reelSketchIcon('refresh')}<span class="label-text">रीफ्रेश</span></button><button class="action-btn" onclick="shareReelContent(event)" title="रील्स शेयर करें" aria-label="रील्स शेयर करें">${reelSketchIcon('share')}<span class="label-text">शेयर</span></button><button class="action-btn lock-save-btn ${saved ? 'is-saved locked' : ''}" onclick="toggleLockSave(this, event)" title="सुरक्षित करें" aria-label="सुरक्षित करें"><span class="lock-icon">${reelSketchIcon(saved ? 'lock' : 'unlock')}</span><span class="label-text">सुरक्षित</span></button></div>
         <div class="reel-footer ui-element"><div class="merchant-profile-row" onclick="openMerchantProfile('${escapeReelsHtml(item.id)}')"><div class="merchant-avatar"><img src="${escapeReelsHtml(item.avatar)}" alt="Store"></div><div class="merchant-details"><h3 class="store-name">${escapeReelsHtml(item.storeName)}</h3><p class="store-discount">${escapeReelsHtml(item.discount)}</p></div></div>
-          <div class="map-distance-row" onclick="openGoogleMap('${escapeReelsHtml(item.lat)}', '${escapeReelsHtml(item.lon)}', '${escapeReelsHtml(item.location)}')"><span class="map-pin-icon">${reelSketchIcon('pin')}</span><span class="distance-text">${escapeReelsHtml(item.distance)} (मैप खोलें)</span></div></div></div>`;
+          <div class="map-distance-row" onclick="openGoogleMap('${escapeReelsHtml(item.lat)}', '${escapeReelsHtml(item.lon)}', '${escapeReelsHtml(item.location)}', '${escapeReelsHtml(item.id)}', '${escapeReelsHtml(item.reelId)}')"><span class="map-pin-icon">${reelSketchIcon('pin')}</span><span class="distance-text">${escapeReelsHtml(item.distance)} (मैप खोलें)</span></div></div></div>`;
     }).join('');
     dedicatedReelsInitialized = true;
     initDedicatedReelObserver();
@@ -3186,6 +3226,7 @@ async function toggleReelLike(reelId, userId) {
           dedicatedActiveReelElement = reelItem;
           reelItem.classList.add('reel-media-playing');
           markReelAsWatched(item);
+          syncReelViewAnalytics(item);
           if (video) {
             video.muted = false;
             video.play().catch(error => console.log('Auto-play restricted:', error));
@@ -3400,7 +3441,7 @@ async function toggleReelLike(reelId, userId) {
         console.log(`Reel metric ${field} handled locally for reel:`, item.reelId);
         return;
       }
-      const { error } = await supabaseClient.from('reels').update({ [field]: value }).eq('id', item.reelId);
+      const { error } = await supabaseClient.from('merchant_reels').update({ [field]: value }).eq('id', item.reelId);
       if (error) console.warn(`Supabase ${field} update failed:`, error.message || error);
     } catch (error) { console.warn(`Supabase ${field} update failed:`, error); }
   }
@@ -3479,7 +3520,8 @@ async function toggleReelLike(reelId, userId) {
     try { if (navigator.share) await navigator.share({ title: `Star Shops - ${item.storeName}`, text, url: window.location.href }); else if (navigator.clipboard?.writeText) { await navigator.clipboard.writeText(`${text}\n${window.location.href}`); openSuccessModal('शेयर लिंक कॉपी हो गया', 'रील का लिंक क्लिपबोर्ड में कॉपी हो गया है।'); } } catch (error) { if (error?.name !== 'AbortError') openSuccessModal('शेयर नहीं हो सका', 'कृपया दोबारा कोशिश करें।'); }
   }
   function openMerchantProfile(merchantId) { openMerchantPublicProfileById(merchantId); }
-  function openGoogleMap(latitude, longitude, address = '') {
+  function openGoogleMap(latitude, longitude, address = '', merchantId = '', reelId = '') {
+    syncReelMapClick(merchantId, reelId);
     const hasCoordinates = latitude && longitude && !isNaN(parseFloat(latitude)) && !isNaN(parseFloat(longitude));
     const query = hasCoordinates ? `${parseFloat(latitude)},${parseFloat(longitude)}` : String(address || '').trim();
     if (!query) { openLocationSearch(); return; }
@@ -3498,7 +3540,7 @@ async function toggleReelLike(reelId, userId) {
 
     try {
       let { data, error } = await supabaseClient
-        .from('posts')
+        .from('merchant_posts')
         .select('*')
         .order('created_at', { ascending: false });
 
@@ -3511,7 +3553,7 @@ async function toggleReelLike(reelId, userId) {
 
       if (!data || data.length === 0) {
         const legacyResult = await supabaseClient
-          .from('reels')
+          .from('merchant_reels')
           .select('*')
           .order('created_at', { ascending: false });
         if (legacyResult.error) console.error('Legacy posts fallback error:', legacyResult.error.message);
@@ -3520,7 +3562,7 @@ async function toggleReelLike(reelId, userId) {
 
       // Sirf image/poster wali files ko filter karna (videos exclude karke)
       const imagePosts = data.filter(item => {
-        const url = (item.media_url || item.image_url || item.video_url || '').toLowerCase();
+        const url = (item.post_image_url || item.media_url || item.image_url || item.reel_url || item.video_url || '').toLowerCase();
         return !url.endsWith('.mp4') && !url.endsWith('.mov') && !url.includes('video');
       });
 
@@ -3531,10 +3573,10 @@ async function toggleReelLike(reelId, userId) {
 
       container.innerHTML = imagePosts.map(post => {
         const merchant = Array.isArray(post.merchants) ? (post.merchants[0] || {}) : (post.merchants || findMerchantById(post.merchant_id) || {});
-        const merchantName = merchant.shop_name || merchant.name || 'Star Merchant';
+        const merchantName = merchant.shop_name || merchant.store_name || merchant.name || 'Star Merchant';
         const merchantAddress = merchant.address || 'Begampur, Delhi';
         const merchantLogo = merchant.logo_url || 'https://via.placeholder.com/40';
-        const mediaUrl = post.media_url || post.image_url || post.video_url;
+        const mediaUrl = post.post_image_url || post.media_url || post.image_url || post.reel_url || post.video_url;
 
         return `
             <div style="background:#fff; margin:15px 12px; border-radius:14px; overflow:hidden; box-shadow:0 4px 12px rgba(0,0,0,0.08); border:1px solid #eaeaea;">
@@ -3730,6 +3772,7 @@ async function toggleReelLike(reelId, userId) {
           
           userFootprints += stepsWalked;
           localStorage.setItem('starshops_total_footprints', userFootprints);
+          syncConsumerProfileToSupabase();
           if(document.getElementById('statFootprintCount')) document.getElementById('statFootprintCount').innerText = userFootprints;
         };
 
@@ -3798,6 +3841,7 @@ async function toggleReelLike(reelId, userId) {
       currentShopperName = newName.trim();
       document.getElementById('profileDisplayUserName').innerText = currentShopperName;
       localStorage.setItem('starshops_consumer_user', JSON.stringify({name: currentShopperName, phone: currentUserPhone}));
+      syncConsumerProfileToSupabase();
     }
   }
 
