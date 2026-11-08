@@ -995,10 +995,7 @@
       <div style="margin-top:6px;"><b>📞 फोन:</b> <span id="pubProfilePhone">उपलब्ध नहीं</span></div>
       <div style="margin-top:6px;"><b>💬 मर्चेंट डिस्क्रिप्शन / ऑफ़र:</b> <br><span id="pubProfileCaption" class="highlight-text" style="color:#B45309; font-weight:700;">एन/ए</span></div>
     </div>
-
-    <div style="font-size: 13px; font-weight: 900; color: #111827; text-align: left; margin: 12px 0 4px 0;">🎁 मर्चेंट ऑफर्स</div>
-    <div id="offersContainer" style="text-align:left; margin-bottom:12px;"><div style="font-size:11px; color:#6B7280; padding:10px 0;">ऑफर्स लोड हो रहे हैं...</div></div>
-    
+   
     <div style="font-size: 13px; font-weight: 900; color: #111827; text-align: left; margin-bottom: 4px; display: flex; align-items: center; gap: 4px;">
       <span>🏪</span> <span>मर्चेंट प्रोफाइल:</span>
     </div>
@@ -2678,7 +2675,6 @@ async function toggleReelLike(reelId, userId) {
     const data = [{ offer_title: store?.shop_name || store?.store_name || 'विशेष ऑफर', offer_details: [offerText, description].filter(Boolean).join(' — '), banner_url: store?.profile_image_url || '' }];
     offersContainer.innerHTML = data.map(offer => `
       <div class="offer-card" style="background:#FFFBEB; border:1px solid #FDE68A; border-radius:12px; overflow:hidden; margin-bottom:10px;">
-        ${offer.banner_url ? `<img src="${offer.banner_url}" alt="Offer Banner" style="width:100%; max-height:180px; object-fit:contain; display:block; background:#fff;">` : ''}
         <div style="padding:10px 12px;">
           <h3 style="font-size:14px; font-weight:900; color:#92400E; margin:0 0 4px;">${offer.offer_title || 'विशेष ऑफर'}</h3>
           <p style="font-size:12px; color:#4B5563; margin:0; line-height:1.45;">${offer.offer_details || ''}</p>
