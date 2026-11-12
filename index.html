@@ -578,53 +578,46 @@
     .gps-scan-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(248, 249, 250, 0.76);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      z-index: 9999999;
+      background: rgba(5, 5, 5, 0.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      z-index: 2147483646;
       display: none;
       align-items: center;
       justify-content: center;
       padding: 20px;
       overflow: hidden;
     }
-    .gps-scan-overlay::before {
-      content: "Welcome to Star Shops";
-      position: absolute;
-      inset: 18% 12% auto;
-      color: rgba(17, 24, 39, 0.52);
-      font-size: clamp(22px, 6vw, 30px);
-      font-weight: 900;
-      letter-spacing: 0.4px;
-      text-align: center;
-      z-index: 0;
-      pointer-events: none;
-    }
-    .gps-scan-overlay.open {
-      display: flex;
-    }
+    .gps-scan-overlay::before { content: none; }
+    .gps-scan-overlay.open { display: flex; }
     .gps-scan-card {
       position: relative;
       z-index: 1;
-      background: rgba(255, 255, 255, 0.97);
+      background: radial-gradient(ellipse at top, #252016 0%, #0A0A0A 78%);
+      color: #FCF6BA;
       width: 100%;
-      max-width: 340px;
+      max-width: 360px;
       border-radius: 20px;
-      padding: 26px 20px;
+      padding: 24px 20px;
       text-align: center;
-      box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-      border: 1px solid #E5E7EB;
+      box-shadow: 0 20px 50px rgba(0,0,0,.55), 0 0 24px rgba(212,175,55,.16);
+      border: 1px solid rgba(212,175,55,.65);
     }
-    .gps-spinner {
-      width: 50px;
-      height: 50px;
-      border: 4px solid #FEF3C7;
-      border-top-color: #F59E0B;
-      border-radius: 50%;
-      margin: 0 auto 16px auto;
-      animation: spinGPS 0.8s linear infinite;
+    .gps-scan-card input {
+      width: 100%; box-sizing: border-box; padding: 12px 14px; margin: 8px 0 12px;
+      border: 1px solid rgba(212,175,55,.65); border-radius: 10px; outline: none;
+      background: #101010; color: #FCF6BA; font-size: 14px;
     }
-    @keyframes spinGPS { to { transform: rotate(360deg); } }
+    .gps-scan-card input::placeholder { color: #A8A29E; }
+    .gps-scan-card button {
+      width: 100%; padding: 12px; border-radius: 10px;
+      background: linear-gradient(135deg, #BF953F 0%, #FCF6BA 25%, #B38728 50%, #FBF5B7 75%, #AA771C 100%);
+      color: #000000;
+      border: 1px solid #FFD700;
+      box-shadow: 0 4px 15px rgba(212, 175, 55, 0.4);
+      font-weight: 900; font-size: 13px; cursor: pointer;
+    }
+    .gps-scan-card button:disabled { opacity: .65; cursor: wait; }
 
     /* 🔒 डेस्कटॉप स्क्रीन पर मोबाइल शेल लॉक (डेस्कटॉप मोड सुरक्षा) 🔒 */
     @media (min-width: 481px) {
@@ -719,46 +712,6 @@
     }
     .sketch-btn.is-saved .sketch-icon {
       fill: currentColor;
-    }
-    .radar-container {
-      position: fixed;
-      inset: 0;
-      background: rgba(0, 0, 0, 0.85);
-      display: none;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      z-index: 2147483647;
-      color: #fff;
-      font-family: sans-serif;
-      text-align: center;
-      padding: 24px;
-    }
-    .radar-scanner {
-      width: 120px;
-      height: 120px;
-      border: 2px solid #00ffcc;
-      border-radius: 50%;
-      position: relative;
-      background: radial-gradient(circle, rgba(0,255,204,0.1) 0%, rgba(0,0,0,0) 70%);
-      box-shadow: 0 0 20px rgba(0,255,204,0.5);
-      animation: star-radar-pulse 1.5s infinite ease-in-out;
-    }
-    @keyframes star-radar-pulse {
-      0% { transform: scale(0.9); opacity: 0.8; }
-      50% { transform: scale(1.1); opacity: 1; box-shadow: 0 0 30px rgba(0,255,204,0.8); }
-      100% { transform: scale(0.9); opacity: 0.8; }
-    }
-    .radar-container p { margin: 20px 0 0; font-size: 16px; letter-spacing: 0.5px; }
-    .radar-manual-btn {
-      margin-top: 20px;
-      padding: 10px 16px;
-      border: 1px solid rgba(255,255,255,0.35);
-      border-radius: 10px;
-      background: rgba(255,255,255,0.12);
-      color: #fff;
-      font-weight: 700;
-      cursor: pointer;
     }
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -979,14 +932,15 @@
 
 </div>
 
-<!-- GPS scan status popup: fetch coordinates and show nearby shops -->
-<div class="gps-scan-overlay" id="gpsScanOverlay">
-  <div class="gps-scan-card">
-    <div class="gps-spinner"></div>
-    <div style="font-size:16px;font-weight:900;color:#111827;margin-bottom:6px;">📍 GPS coordinates मिल रहे हैं</div>
-    <div style="font-size:12px;color:#4B5563;line-height:1.5;margin-bottom:16px;" id="gpsScanStatusText">आपकी GPS लोकेशन लेकर आसपास की दुकानों को दूरी के अनुसार दिखाया जाएगा।</div>
-    <button onclick="forceRetryGPSScan()" style="width:100%;padding:11px;background:#111827;color:#FFF;border:none;border-radius:10px;font-weight:800;font-size:13px;cursor:pointer;">GPS से दोबारा लोकेशन लें 🔄</button>
-    <button onclick="promptManualLocation()" style="width:100%;padding:10px;margin-top:8px;background:#FFFFFF;color:#111827;border:1px solid #D1D5DB;border-radius:10px;font-weight:800;font-size:12px;cursor:pointer;">या area manually चुनें</button>
+<!-- Single gold area-selection popup: type an area or tap Scan for browser GPS permission -->
+<div class="gps-scan-overlay" id="gpsScanOverlay" aria-hidden="true">
+  <div class="gps-scan-card" role="dialog" aria-modal="true" aria-labelledby="areaSelectionTitle">
+    <div style="font-size:20px;margin-bottom:7px;">📍</div>
+    <div id="areaSelectionTitle" style="font-size:17px;font-weight:900;color:#FCF6BA;margin-bottom:6px;">अपना एरिया चुनें</div>
+    <div style="font-size:12px;color:#C4BCA6;line-height:1.5;">एरिया टाइप करें या बिना एरिया लिखे स्कैन दबाएँ</div>
+    <input type="text" id="areaSelectionInput" autocomplete="address-level2" placeholder="जैसे: Rohini Sector 7, Delhi" aria-label="अपना एरिया लिखें">
+    <div id="gpsScanStatusText" role="status" aria-live="polite" style="font-size:11px;color:#D6C58E;min-height:18px;margin:0 0 10px;">स्कैन दबाने पर GPS अनुमति माँगी जाएगी।</div>
+    <button type="button" id="areaScanButton" onclick="startAreaSelection()">स्कैन</button>
   </div>
 </div>
 
@@ -1477,6 +1431,7 @@ async function toggleReelLike(reelId, userId) {
         currentUserPhone = savedUser.phone;
         document.getElementById('profileDisplayUserName').innerText = currentShopperName;
         syncConsumerProfileToSupabase();
+        window.openLocationSearch();
     } else {
         document.getElementById('authModalOverlay').classList.add('open');
     }
@@ -1516,7 +1471,6 @@ async function toggleReelLike(reelId, userId) {
       storeSearchInput.dataset.locationEnterBound = 'true';
     }
     toggleRangeView('in-range');
-    requestFirstTimeLocation();
 
     // क्लेम/फुटप्रिंट स्थानीय डिवाइस से पढ़ें; दुकानें Supabase से अलग लोड हों।
     loadLocalUserStats();
@@ -1574,18 +1528,18 @@ async function toggleReelLike(reelId, userId) {
   let gpsScanResolver = null;
   let gpsScanGeneration = 0;
 
-  function setLocationRadarVisible(visible) {
-    const radar = document.getElementById('radarModal');
-    if (!radar) return;
-    radar.style.display = visible ? 'flex' : 'none';
-    radar.setAttribute('aria-hidden', visible ? 'false' : 'true');
+  function setAreaSelectionVisible(visible) {
+    const overlay = document.getElementById('gpsScanOverlay');
+    if (!overlay) return;
+    overlay.classList.toggle('open', Boolean(visible));
+    overlay.setAttribute('aria-hidden', visible ? 'false' : 'true');
   }
 
   function finishLocationScan(result) {
     if (gpsScanInterval) { clearInterval(gpsScanInterval); gpsScanInterval = null; }
     gpsScanGeneration++;
     gpsRequestInFlight = false;
-    setLocationRadarVisible(false);
+    setAreaSelectionVisible(false);
     const resolve = gpsScanResolver;
     gpsScanResolver = null;
     gpsScanPromise = null;
@@ -1594,7 +1548,7 @@ async function toggleReelLike(reelId, userId) {
 
   function startContinuousGPSScan(showRadar = false, forceRefresh = false) {
     if (gpsScanPromise) {
-      if (showRadar) setLocationRadarVisible(true);
+      if (showRadar) setAreaSelectionVisible(true);
       return gpsScanPromise;
     }
     if (gpsResolvedOnce && !forceRefresh) return Promise.resolve(true);
@@ -1605,7 +1559,7 @@ async function toggleReelLike(reelId, userId) {
       gpsResolvedOnce = false;
       manualLocationSelected = false;
     }
-    if (showRadar) setLocationRadarVisible(true);
+    if (showRadar) setAreaSelectionVisible(true);
     const headerLocation = document.getElementById('headerLocationText');
     if (headerLocation) headerLocation.innerText = 'लोकेशन खोजी जा रही है...';
 
@@ -1622,23 +1576,34 @@ async function toggleReelLike(reelId, userId) {
         gpsResolvedOnce = true;
         manualLocationSelected = false;
         if (headerLocation) headerLocation.innerText = 'आपकी लोकेशन';
-        // Reload stores/offers after a confirmed location so the scan produces fresh results.
-        await fetchLiveMerchantsFromSupabase(true);
-        applyLocationFilter();
-        updateHeaderLocationNameFromCoordinates(homeLat, homeLon);
+        // Close on GPS lock; refresh stores and resolve the display name without delaying the lock.
         finishLocationScan(true);
+        fetchLiveMerchantsFromSupabase(true).then(() => {
+          applyLocationFilter();
+          renderHomeStoreResults();
+        }).catch(error => console.warn('Nearby stores refresh failed:', error));
+        updateHeaderLocationNameFromCoordinates(homeLat, homeLon);
       }, async error => {
         if (generation !== gpsScanGeneration) return;
         gpsRequestInFlight = false;
         if (error && error.code === 1) {
           if (headerLocation) headerLocation.innerText = 'लोकेशन अनुमति दें';
-          setLocationRadarVisible(false);
-          await showAppNotice('लोकेशन की अनुमति बंद है। ब्राउज़र सेटिंग में अनुमति चालू करें, या अपना इलाका मैन्युअली चुनें।', 'लोकेशन अनुमति');
-          if (generation === gpsScanGeneration) await window.promptManualLocation();
-          if (generation === gpsScanGeneration) finishLocationScan(manualLocationSelected);
+          const status = document.getElementById('gpsScanStatusText');
+          const button = document.getElementById('areaScanButton');
+          if (status) status.textContent = 'लोकेशन अनुमति नहीं मिली। ब्राउज़र सेटिंग बदलें या ऊपर एरिया लिखें।';
+          if (button) { button.disabled = false; button.textContent = 'स्कैन'; }
+          if (gpsScanInterval) { clearInterval(gpsScanInterval); gpsScanInterval = null; }
+          gpsScanGeneration++;
+          const resolve = gpsScanResolver;
+          gpsScanResolver = null;
+          gpsScanPromise = null;
+          if (resolve) resolve(false);
+        } else {
+          const status = document.getElementById('gpsScanStatusText');
+          if (status) status.textContent = 'लोकेशन खोजी जा रही है…';
         }
-        // Position unavailable or timeout: radar remains active and the interval retries.
-      }, { enableHighAccuracy: false, timeout: 3000, maximumAge: 0 });
+        // Timeout/unavailable positions retry in the background while this same dialog stays open.
+      }, { enableHighAccuracy: true, timeout: 3000, maximumAge: 0 });
     };
 
     scanOnce();
@@ -1646,24 +1611,6 @@ async function toggleReelLike(reelId, userId) {
     return gpsScanPromise;
   }
 
-  function requestFirstTimeLocation() {
-    if (!gpsResolvedOnce && !manualLocationSelected && !gpsScanInterval) startContinuousGPSScan(false);
-  }
-
-  window.chooseManualLocationFromRadar = async function() {
-    if (gpsScanInterval) { clearInterval(gpsScanInterval); gpsScanInterval = null; }
-    gpsScanGeneration++;
-    gpsRequestInFlight = false;
-    setLocationRadarVisible(false);
-    const selected = await window.promptManualLocation();
-    finishLocationScan(Boolean(selected));
-  };
-
-  window.forceRetryGPSScan = function() {
-    if (gpsScanInterval) { clearInterval(gpsScanInterval); gpsScanInterval = null; }
-    gpsResolvedOnce = false;
-    return window.openLocationSearch();
-  };
 
   window.addEventListener('popstate', function() {
     const isHomeTabActive = document.getElementById('tab-home').classList.contains('active');
@@ -1745,40 +1692,39 @@ async function toggleReelLike(reelId, userId) {
   }
 
   window.openLocationSearch = async function() {
-    // Show and allow the radar overlay to paint immediately on the user's tap/Enter.
-    setLocationRadarVisible(true);
-    await new Promise(resolve => requestAnimationFrame(() => setTimeout(resolve, 0)));
-
-    if (!navigator.geolocation) {
-      setLocationRadarVisible(false);
-      await showAppNotice('आपका ब्राउज़र लोकेशन सपोर्ट नहीं करता। आप अपना इलाका मैन्युअली चुन सकते हैं।', 'लोकेशन उपलब्ध नहीं');
-      return window.promptManualLocation();
-    }
-
-    try {
-      if (navigator.permissions && typeof navigator.permissions.query === 'function') {
-        const permission = await navigator.permissions.query({ name: 'geolocation' });
-        if (permission.state === 'denied') {
-          setLocationRadarVisible(false);
-          await showAppNotice('लोकेशन की अनुमति ब्राउज़र सेटिंग में ब्लॉक है। सेटिंग से अनुमति चालू करें, या अपना इलाका मैन्युअली चुनें।', 'लोकेशन अनुमति बंद है');
-          return window.promptManualLocation();
-        }
-      }
-    } catch (_) {
-      // Permissions API is unavailable in some Android WebViews; getCurrentPosition will decide.
-    }
-
-    // If startup scanning is already in progress, show the radar and wait for that same scan.
-    if (gpsScanPromise) {
-      setLocationRadarVisible(true);
-      return gpsScanPromise;
-    }
-    // A user tap/Enter starts a fresh scan; timeout/unavailable results keep retrying until a fix.
-    return startContinuousGPSScan(true, true);
+    const input = document.getElementById('areaSelectionInput');
+    const status = document.getElementById('gpsScanStatusText');
+    const button = document.getElementById('areaScanButton');
+    if (input) input.value = '';
+    if (status) status.textContent = 'स्कैन दबाने पर GPS अनुमति माँगी जाएगी।';
+    if (button) { button.disabled = false; button.textContent = 'स्कैन'; }
+    setAreaSelectionVisible(true);
+    return true;
   };
 
-  window.promptManualLocation = async function() {
-    const chosenArea = await openAppPrompt({
+  window.startAreaSelection = async function() {
+    const input = document.getElementById('areaSelectionInput');
+    const status = document.getElementById('gpsScanStatusText');
+    const button = document.getElementById('areaScanButton');
+    const typedArea = input ? input.value.trim() : '';
+    if (typedArea) {
+      if (button) { button.disabled = true; button.textContent = 'खोज रहे हैं…'; }
+      if (status) status.textContent = 'आपका चुना हुआ एरिया सेट किया जा रहा है…';
+      return window.promptManualLocation(typedArea);
+    }
+    if (!navigator.geolocation) {
+      if (status) status.textContent = 'यह ब्राउज़र GPS सपोर्ट नहीं करता। एरिया लिखकर स्कैन करें।';
+      return false;
+    }
+    if (status) status.textContent = 'ब्राउज़र की लोकेशन अनुमति माँगी जा रही है…';
+    if (button) { button.disabled = false; button.textContent = 'स्कैन हो रहा है…'; }
+    // Hide the app dialog before asking the browser for permission, so only its native prompt remains visible.
+    setAreaSelectionVisible(false);
+    return startContinuousGPSScan(false, true);
+  };
+
+  window.promptManualLocation = async function(manualAreaValue = null) {
+    const chosenArea = typeof manualAreaValue === 'string' ? manualAreaValue : await openAppPrompt({
       title: 'अपना area चुनें',
       message: 'आपके चुने हुए इलाके के offers खोजेंगे।',
       value: 'Rohini Delhi',
@@ -1797,7 +1743,7 @@ async function toggleReelLike(reelId, userId) {
     homeLat = null;
     homeLon = null;
     document.getElementById('headerLocationText').innerText = normalizedArea;
-    setLocationRadarVisible(false);
+    setAreaSelectionVisible(false);
     if (gpsScanPromise) finishLocationScan(true);
     toggleRangeView('in-range');
     const overlay = document.getElementById('gpsScanOverlay');
@@ -1907,6 +1853,7 @@ async function toggleReelLike(reelId, userId) {
     syncConsumerProfileToSupabase();
     document.getElementById('profileDisplayUserName').innerText = currentShopperName;
     document.getElementById('authModalOverlay').classList.remove('open');
+    window.openLocationSearch();
     
   }
 
@@ -4543,11 +4490,6 @@ async function toggleReelLike(reelId, userId) {
 </script>
 
 
-<div id="radarModal" class="radar-container" role="status" aria-live="polite" aria-hidden="true">
-  <div class="radar-scanner" aria-hidden="true"></div>
-  <p id="radarMessage">आसपास की दुकानें और ऑफर्स स्कैन हो रहे हैं...</p>
-  <button type="button" class="radar-manual-btn" onclick="chooseManualLocationFromRadar()">इलाका मैन्युअली चुनें</button>
-</div>
 <script>
   // Capacitor native builds expose the registered StatusBar plugin here.
   // Plain-browser/PWA runs safely skip native-only status bar calls.
