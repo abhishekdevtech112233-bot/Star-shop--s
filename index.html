@@ -287,6 +287,13 @@
     .reel-item > video, .reel-item > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #050505; }
     .reel-item::after { content: ""; position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to bottom, rgba(0,0,0,.42), transparent 25%, transparent 55%, rgba(0,0,0,.88)); z-index: 1; }
     .reel-top-controls { position: absolute; top: max(14px, env(safe-area-inset-top)); left: 14px; right: 14px; display: flex; justify-content: space-between; z-index: 5; }
+    .expiry-timer-wrapper { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 14px; background: rgba(220, 38, 38, 0.16); border: 1px solid rgba(220, 38, 38, 0.42); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+    .reel-top-controls .expiry-timer-wrapper { margin-left: auto; align-self: flex-start; }
+    .reel-top-controls.search-open .expiry-timer-wrapper { display: none; }
+    .blinking-red-dot { width: 6px; height: 6px; flex: 0 0 6px; border-radius: 50%; background-color: #EF4444; box-shadow: 0 0 8px rgba(239, 68, 68, 0.9); animation: crispBlink 1s infinite ease-in-out; }
+    .timer-text { color: #DC2626; font-size: 11px; font-weight: 800; letter-spacing: 0.3px; white-space: nowrap; }
+    .reel-item .timer-text { color: #FFF; text-shadow: 0 1px 3px #000; }
+    @keyframes crispBlink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.3; transform: scale(0.8); } }
     .reel-search-cluster { display: flex; align-items: center; gap: 8px; }
     .reel-inline-search { display: none; align-items: center; width: min(245px, calc(100vw - 92px)); min-height: 34px; padding: 0 10px; border: 1px solid rgba(255,255,255,.5); border-radius: 18px; background: rgba(255,255,255,.16); box-shadow: 0 8px 26px rgba(0,0,0,.2); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
     .reel-top-controls.search-open .reel-inline-search { display: flex; }
@@ -406,6 +413,7 @@
     .post-avatar { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; background: #111; border: 2px solid #FFFFFF; }
     .post-more-info-text { font-size: 12px; font-weight: 800; color: #2563EB; cursor: pointer; text-decoration: underline; }
     .post-media-box { width: 100%; background: #111; overflow: hidden; cursor: pointer; position: relative; }
+    .post-media-box > .expiry-timer-wrapper { position: absolute; top: 10px; right: 10px; z-index: 3; pointer-events: none; }
     .post-media-box video, .post-media-box img { width: 100%; height: 100%; max-height: 360px; object-fit: cover; display: block; }
     .post-content-body { padding: 14px 16px; font-size: 13px; font-weight: 700; color: #1F2937; cursor: pointer; }
     .post-reels-preview-box { padding: 0 16px 14px 16px; border-top: 1px solid #F3F4F6; margin-top: 10px; }
@@ -444,6 +452,18 @@
     .reel-popup-card, .crop-modal-card, .scanner-card, .success-card, .auth-card { background: #FFFFFF; width: 100%; max-width: 340px; border-radius: 20px; padding: 24px; text-align: center; box-shadow: 0 15px 35px rgba(0,0,0,0.3); }
     .shop-profile-card { background: #FFFFFF; width: 100%; max-width: 480px; border-radius: 24px 24px 0 0; padding: 24px 20px 30px 20px; box-shadow: 0 -10px 30px rgba(0,0,0,0.3); animation: slideUpModal 0.25s ease-out; }
     @keyframes slideUpModal { from { transform: translateY(100%); } to { transform: translateY(0); } }
+    /* Profile burger menu: mobile bottom sheet, centered desktop panel */
+    #savedReelsModal.bottom-sheet-overlay { background: rgba(0,0,0,0.8); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); align-items: flex-end; justify-content: center; padding: 0; }
+    #savedReelsModal.bottom-sheet-overlay.open { display: flex; animation: fadeInBg 0.3s ease both; }
+    #savedReelsModal .bottom-sheet-card { width: 100%; max-width: 100%; height: 75vh; background: linear-gradient(135deg, #130a12 0%, #1f0f1c 100%); border: 0; border-top: 2px solid #8A0051; border-radius: 28px 28px 0 0; padding: 24px; overflow-y: auto; box-shadow: 0 -20px 50px rgba(0,0,0,0.9); transform: translateY(100%); animation: slideUpSheet 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    #savedReelsModal .bottom-sheet-card > div:first-child > div:first-child { color: #FCF6BA !important; }
+    @media (min-width: 1024px) {
+      #savedReelsModal.bottom-sheet-overlay { align-items: center; justify-content: center; padding: 30px; }
+      #savedReelsModal .bottom-sheet-card { width: 80vw; max-width: 850px; height: 80vh; border: 1px solid rgba(255, 51, 153, 0.5); border-radius: 24px; transform: scale(0.9); animation: scaleUpDesktop 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+    }
+    @keyframes slideUpSheet { to { transform: translateY(0); } }
+    @keyframes scaleUpDesktop { to { transform: scale(1); } }
+    @keyframes fadeInBg { from { opacity: 0; } to { opacity: 1; } }
 
     .popup-action-btn { width: 100%; padding: 12px; border-radius: 12px; font-size: 14px; font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; border: none; }
     .btn-like-action { background: #FEF2F2; color: #DC2626; border: 1px solid #FECACA; }
@@ -1057,8 +1077,8 @@
   </div>
 </div>
 
-<div class="shop-profile-modal" id="savedReelsModal">
-  <div class="shop-profile-card">
+<div class="shop-profile-modal bottom-sheet-overlay" id="savedReelsModal">
+  <div class="shop-profile-card bottom-sheet-card">
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
       <div style="font-size:18px; font-weight:900; color:#111827;">⭐ सेव्ड डील्स & लोकेशन</div>
       <button onclick="closeSavedReelsModal()" class="modal-close-btn">✕</button>
@@ -1067,6 +1087,14 @@
       <span class="menu-icon">🌐</span>
       <span class="menu-text" id="burgerLangLabel">ऐप की भाषा / App Language</span>
       <span id="currentSelectedLangText" style="font-size:12px;font-weight:800;color:#F59E0B;">हिन्दी</span>
+    </div>
+    <div class="menu-item-row language-menu-item" role="button" tabindex="0" onclick="setMobileMode()" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();setMobileMode();}">
+      <span class="menu-icon">📱</span>
+      <span class="menu-text">मोबाइल व्यू / Mobile View</span>
+    </div>
+    <div class="menu-item-row language-menu-item" role="button" tabindex="0" onclick="setDesktopMode()" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();setDesktopMode();}">
+      <span class="menu-icon">🖥️</span>
+      <span class="menu-text">डेस्कटॉप व्यू / Desktop View</span>
     </div>
 
     <div class="light-box-text-fix" style="margin-bottom: 12px; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 10px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
@@ -2056,6 +2084,7 @@ async function toggleReelLike(reelId, userId) {
             media_id: media.id || '',
             distance: store.address || "दिल्ली",
             address: store.address || "दिल्ली",
+            expires_at: media.expires_at || '',
             isVideo: false,
             isHighDiscount: isHighDiscountMerchant(store)
           });
@@ -2122,6 +2151,40 @@ async function toggleReelLike(reelId, userId) {
 
   function getPostMusicUrl(item) {
     return String(item?.music_url || item?.audio_url || item?.soundtrack_url || '').trim();
+  }
+
+  function buildDatabaseExpiryTimerMarkup(expiryValue) {
+    const expiryTimestamp = Date.parse(expiryValue || '');
+    if (!Number.isFinite(expiryTimestamp)) return '';
+    return `<div class="expiry-timer-wrapper database-expiry-timer" role="timer" aria-live="off" data-expiry-timestamp="${expiryTimestamp}"><span class="blinking-red-dot" aria-hidden="true"></span><span class="timer-text"></span></div>`;
+  }
+
+  function updateDatabaseExpiryTimers() {
+    document.querySelectorAll('.database-expiry-timer').forEach(timer => {
+      const expiryTimestamp = Number(timer.dataset.expiryTimestamp);
+      if (!Number.isFinite(expiryTimestamp)) return;
+      const remainingMs = expiryTimestamp - Date.now();
+      let label;
+      if (remainingMs <= 0) {
+        label = document.documentElement.lang === 'en' ? 'Expired' : 'समय समाप्त';
+      } else {
+        const totalMinutes = Math.ceil(remainingMs / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        label = document.documentElement.lang === 'en'
+          ? `Expires in ${hours}h ${minutes}m`
+          : `${hours}घं ${minutes}मि में समाप्त`;
+      }
+      const text = timer.querySelector('.timer-text');
+      if (text) text.textContent = label;
+    });
+  }
+
+  function ensureDatabaseExpiryTimerUpdates() {
+    updateDatabaseExpiryTimers();
+    if (!window.__databaseExpiryTimerInterval) {
+      window.__databaseExpiryTimerInterval = setInterval(updateDatabaseExpiryTimers, 60000);
+    }
   }
 
   function setPostMusicButtonState(button, playing) {
@@ -2255,6 +2318,7 @@ async function toggleReelLike(reelId, userId) {
         (!item.mediaUrl && item.store === postStoreName && item.offer === postOfferText)
       );
 
+      const postExpiryTimer = buildDatabaseExpiryTimerMarkup(post.expires_at);
       html += `
         <div class="post-card">
           <div class="post-header">
@@ -2266,6 +2330,7 @@ async function toggleReelLike(reelId, userId) {
           </div>
           
           <div class="post-media-box" style="position:relative;" onclick="openFullPostView('${post.post_image}', '${encodeURIComponent(post.caption)}', false)">
+            ${postExpiryTimer}
             ${mediaHtml}
           </div>
           <div class="post-content-body" onclick="openFullPostView('${post.post_image}', '${encodeURIComponent(post.caption)}', false)">
@@ -2287,6 +2352,7 @@ async function toggleReelLike(reelId, userId) {
     });
     if (append) container.insertAdjacentHTML('beforeend', html);
     else container.innerHTML = html;
+    ensureDatabaseExpiryTimerUpdates();
     const newCards = Array.from(container.querySelectorAll('.post-card')).slice(-postsArray.length);
     attachFeedLongPressSaveActions({ querySelectorAll: () => newCards }, postsArray, batchStartIndex);
     renderedPostCount += postsArray.length;
@@ -3044,7 +3110,7 @@ async function toggleReelLike(reelId, userId) {
         createdAt: mediaCreatedAt(reel),
         avatar: store?.avatar_url || store?.profile_image || store?.display_image || getCategoryFallbackImage(store?.category, store, index),
         location: compactReelLocation(store?.address || store?.location || store?.city || 'दिल्ली'),
-        distance: compactReelLocation(store?.distance_text || store?.distance || store?.address || 'लोकेशन देखें'), lat: lat == null ? '' : String(lat), lon: lon == null ? '' : String(lon) });
+        distance: compactReelLocation(store?.distance_text || store?.distance || store?.address || 'लोकेशन देखें'), lat: lat == null ? '' : String(lat), lon: lon == null ? '' : String(lon), expiresAt: reel.expires_at || '' });
     });
     const storesById = new Map((searchableSupabaseStores || []).map(store => [String(store.id), store]));
     dedicatedReelMediaAppendCache.forEach(reel => {
@@ -3222,7 +3288,7 @@ async function toggleReelLike(reelId, userId) {
     const saved = savedReelsList.some(savedItem => savedItem.mediaUrl === item.mediaUrl || (!savedItem.mediaUrl && savedItem.store === item.storeName && savedItem.offer === item.discount));
     const media = item.isVideo ? `<video src="${escapeReelsHtml(item.mediaUrl)}" preload="${index < 2 ? 'auto' : 'metadata'}" playsinline autoplay muted loop></video>` : `<img src="${escapeReelsHtml(item.mediaUrl)}" alt="${escapeReelsHtml(item.storeName)}" loading="${index < 3 ? 'eager' : 'lazy'}">`;
     return `<div class="reel-item" data-reel-index="${index}" onclick="handleScreenTap(event)">${media}
-      <div class="reel-top-controls ui-element"><div class="reel-search-cluster"><button class="top-icon-btn search-trigger" onclick="openSearchFilter(event)" title="सर्च करें" aria-label="सर्च करें">${reelSketchIcon('search')}</button><div class="reel-inline-search"><input type="search" enterkeyhint="search" value="${escapeReelsHtml(activeReelsSearchQuery)}" placeholder="दुकान या लोकेशन खोजें" onkeydown="submitInlineReelsSearch(event, this)" aria-label="रील्स सर्च"><span class="search-submit-icon">${reelSketchIcon('search')}</span></div></div></div>
+      <div class="reel-top-controls ui-element"><div class="reel-search-cluster"><button class="top-icon-btn search-trigger" onclick="openSearchFilter(event)" title="सर्च करें" aria-label="सर्च करें">${reelSketchIcon('search')}</button><div class="reel-inline-search"><input type="search" enterkeyhint="search" value="${escapeReelsHtml(activeReelsSearchQuery)}" placeholder="दुकान या लोकेशन खोजें" onkeydown="submitInlineReelsSearch(event, this)" aria-label="रील्स सर्च"><span class="search-submit-icon">${reelSketchIcon('search')}</span></div></div>${buildDatabaseExpiryTimerMarkup(item.expiresAt)}</div>
       <div class="reel-actions-bar ui-element"><button class="action-btn star-rating-btn ${isReelRated(item) ? 'rated' : ''}" onclick="rateWithStyle(this, event)" title="रेटिंग दें" aria-label="रेटिंग दें"><span class="star-icon-wrapper">${reelSketchIcon('star')}</span><span class="rating-status"><span class="count total-like-count" style="${item.ratingCount > 0 ? '' : 'display:none;'}">${formatCompactCount(item.ratingCount)}</span></span><span class="label-text">रेटिंग</span></button><button class="action-btn" onclick="refreshReelContent(event)" title="रील्स रिफ्रेश करें" aria-label="रील्स रिफ्रेश करें">${reelSketchIcon('refresh')}<span class="label-text">रीफ्रेश</span></button><button class="action-btn" onclick="shareReelContent(event)" title="रील्स शेयर करें" aria-label="रील्स शेयर करें">${reelSketchIcon('share')}<span class="label-text">शेयर</span></button><button class="action-btn lock-save-btn ${saved ? 'is-saved locked' : ''}" onclick="toggleLockSave(this, event)" title="सुरक्षित करें" aria-label="सुरक्षित करें"><span class="lock-icon">${reelSketchIcon(saved ? 'lock' : 'unlock')}</span><span class="label-text">सुरक्षित</span></button></div>
       <div class="reel-footer ui-element"><div class="merchant-profile-row" onclick="openMerchantProfile('${escapeReelsHtml(item.id)}')"><div class="merchant-avatar"><img src="${escapeReelsHtml(item.avatar)}" alt="Store"></div><div class="merchant-details"><h3 class="store-name">${escapeReelsHtml(item.storeName)}</h3><p class="store-discount">${escapeReelsHtml(item.discount)}</p></div></div>
         <div class="map-distance-row" onclick="openGoogleMap('${escapeReelsHtml(item.lat)}', '${escapeReelsHtml(item.lon)}', '${escapeReelsHtml(item.location)}', '${escapeReelsHtml(item.id)}', '${escapeReelsHtml(item.reelId)}')"><span class="map-pin-icon">${reelSketchIcon('pin')}</span><span class="distance-text">${escapeReelsHtml(item.distance)} (मैप खोलें)</span></div></div></div>`;
@@ -3251,6 +3317,7 @@ async function toggleReelLike(reelId, userId) {
       return;
     }
     container.innerHTML = reelsFeedItems.map((item, index) => buildDedicatedReelMarkup(item, index)).join('');
+    ensureDatabaseExpiryTimerUpdates();
     dedicatedReelsInitialized = true;
     initDedicatedReelObserver();
     initReelsInfiniteScroll();
@@ -3298,6 +3365,7 @@ async function toggleReelLike(reelId, userId) {
       reelsFeedItems.push(...nextItems);
       reelsVisibleCount = reelsFeedItems.length;
       feedContainer.insertAdjacentHTML('beforeend', nextItems.map((item, index) => buildDedicatedReelMarkup(item, firstNewIndex + index)).join(''));
+      ensureDatabaseExpiryTimerUpdates();
       initDedicatedReelObserver();
       if (reelsFeedItems.length >= filteredItems.length) reelsHasMore = false;
       // Existing reel DOM nodes and current scroll position are intentionally preserved.
@@ -3908,13 +3976,35 @@ async function toggleReelLike(reelId, userId) {
   function closeMonthlyHistoryModal() { document.getElementById('monthlyHistoryModal').classList.remove('open'); }
 
   function openSavedReelsModal() { renderSavedReels(savedReelsList); document.getElementById('savedReelsModal').classList.add('open'); }
+  function setMobileMode() {
+    let viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) {
+      viewportMeta = document.createElement('meta');
+      viewportMeta.name = 'viewport';
+      document.head.appendChild(viewportMeta);
+    }
+    viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+    document.body.classList.add('forced-mobile-view');
+    document.body.classList.remove('forced-desktop-view');
+  }
+  function setDesktopMode() {
+    let viewportMeta = document.querySelector('meta[name="viewport"]');
+    if (!viewportMeta) {
+      viewportMeta = document.createElement('meta');
+      viewportMeta.name = 'viewport';
+      document.head.appendChild(viewportMeta);
+    }
+    viewportMeta.content = 'width=1200, initial-scale=0.5';
+    document.body.classList.add('forced-desktop-view');
+    document.body.classList.remove('forced-mobile-view');
+  }
   function renderSavedDealsList(list) {
     const container = document.getElementById('savedReelsListContainer');
     if (!list || list.length === 0) { container.innerHTML = `<div style="text-align:center; color:#6B7280; font-size:13px; padding:10px;">कोई डील्स या लोकेशन नहीं मिली।</div>`; return; }
     container.innerHTML = list.map((item, index) => {
       const mediaUrl = item.video_url || item.mediaUrl || item.url || '';
       const preview = mediaUrl ? `<video src="${escapeReelsHtml(mediaUrl)}" muted playsinline preload="metadata" controls style="width:72px;height:104px;object-fit:cover;border-radius:8px;background:#111;"></video>` : `<div style="width:72px;height:104px;border-radius:8px;background:#E5E7EB;display:flex;align-items:center;justify-content:center;font-size:10px;color:#6B7280;">वीडियो नहीं</div>`;
-      return `<div class="saved-reel-item" style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #E5E7EB;"><span class="reel-serial-number" style="width:28px;flex:0 0 28px;font-size:12px;font-weight:900;color:#B38728;">#${index + 1}</span>${preview}<div style="min-width:0;flex:1;"><div style="font-size:13px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeReelsHtml(item.store || item.storeName || 'सुरक्षित रील')}</div><div class="highlight-text" style="font-size:11px;color:#B45309;font-weight:700;margin-top:2px;">📍 ${escapeReelsHtml(item.location || 'लोकेशन उपलब्ध नहीं')}</div><div class="red-text" style="font-size:10px;color:#DC2626;font-weight:700;margin-top:1px;">⏳ एक्सपायर: रात 12:00 बजे</div><div class="green-text" style="font-size:12px;font-weight:800;color:#059669;margin-top:4px;">${escapeReelsHtml(item.offer || 'सुरक्षित रील')}</div></div></div>`;
+      return `<div class="saved-reel-item" style="display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid #E5E7EB;"><span class="reel-serial-number" style="width:28px;flex:0 0 28px;font-size:12px;font-weight:900;color:#B38728;">#${index + 1}</span>${preview}<div style="min-width:0;flex:1;"><div style="font-size:13px;font-weight:800;color:#111827;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeReelsHtml(item.store || item.storeName || 'सुरक्षित रील')}</div><div class="highlight-text" style="font-size:11px;color:#B45309;font-weight:700;margin-top:2px;">📍 ${escapeReelsHtml(item.location || 'लोकेशन उपलब्ध नहीं')}</div><div class="green-text" style="font-size:12px;font-weight:800;color:#059669;margin-top:4px;">${escapeReelsHtml(item.offer || 'सुरक्षित रील')}</div></div></div>`;
     }).join('');
   }
   function renderSavedReels(savedList) { renderSavedDealsList(savedList); }
