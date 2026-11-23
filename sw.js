@@ -1,42 +1,30 @@
-const CACHE_NAME = 'star-merchant-v3'; // 👈 जब भी बड़ा अपडेट करो, इसे v3, v4 कर सकते हो
-const assetsToCache = [
-  './index.html',
-  './manifest.json',
-  './logo.svg',
-  './logo512.png'
-];
+const CACHE_NAME = "starshops-offline-v2";
+const OFFLINE_URL = "./offline.html";
 
-// 1. इंस्टॉल करते समय नई फाइलें कैच करना
-self.addEventListener('install', (event) => {
+self.addEventListener("install", (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(assetsToCache);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.add(OFFLINE_URL))
   );
-  self.skipWaiting(); // नया सर्विस वर्कर तुरंत कंट्रोल ले ले
+  self.skipWaiting();
 });
 
-// 2. एक्टिवेट होते ही पुराने सारे कैच डिलीट कर देना (ताकि नया अपडेट तुरंत दिखे)
-self.addEventListener('activate', (event) => {
+self.addEventListener("activate", (event) => {
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.map((cache) => {
-          if (cache !== CACHE_NAME) {
-            console.log('Purging old cache:', cache);
-            return caches.delete(cache);
-          }
-        })
-      );
-    }).then(() => self.clients.claim())
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys
+          .filter((key) => key !== CACHE_NAME)
+          .map((key) => caches.delete(key))
+      )
+    )
   );
+  self.clients.claim();
 });
 
-// 3. फेच रिक्वेस्ट हैंडल करना
-self.addEventListener('fetch', (event) => {
-  event.respondWith(
-    caches.match(event.request).then((response) => {
-      return response || fetch(event.request);
-    })
-  );
+self.addEventListener("fetch", (event) => {
+  if (event.request.mode === "navigate") {
+    event.respondWith(
+      fetch(event.request).catch(() => caches.match(OFFLINE_URL))
+    );
+  }
 });
