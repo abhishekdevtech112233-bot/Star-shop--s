@@ -1084,13 +1084,9 @@
       <span class="menu-text" id="burgerLangLabel">ऐप की भाषा / App Language</span>
       <span id="currentSelectedLangText" style="font-size:12px;font-weight:800;color:#F59E0B;">हिन्दी</span>
     </div>
-    <div class="menu-item-row language-menu-item" role="button" tabindex="0" onclick="setMobileMode()" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();setMobileMode();}">
-      <span class="menu-icon">📱</span>
-      <span class="menu-text">मोबाइल व्यू / Mobile View</span>
-    </div>
-    <div class="menu-item-row language-menu-item" role="button" tabindex="0" onclick="setDesktopMode()" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();setDesktopMode();}">
-      <span class="menu-icon">🖥️</span>
-      <span class="menu-text">डेस्कटॉप व्यू / Desktop View</span>
+    <div class="menu-item-row language-menu-item" id="deviceViewModeToggle" role="button" tabindex="0" aria-label="डेस्कटॉप व्यू पर स्विच करें / Switch to Desktop View" onclick="toggleDeviceViewMode()" onkeydown="if(event.key === 'Enter' || event.key === ' '){event.preventDefault();toggleDeviceViewMode();}">
+      <span class="menu-icon" id="deviceViewModeIcon">🖥️</span>
+      <span class="menu-text" id="deviceViewModeLabel">डेस्कटॉप व्यू पर स्विच करें / Switch to Desktop View</span>
     </div>
 
     <div class="light-box-text-fix" style="margin-bottom: 12px; background: #F3F4F6; border: 1px solid #E5E7EB; border-radius: 10px; padding: 8px 12px; display: flex; align-items: center; gap: 8px;">
@@ -2043,11 +2039,12 @@ async function toggleReelLike(reelId, userId) {
         display_image: (store.profile_image_url && String(store.profile_image_url).trim()) ? store.profile_image_url : (store.image_url || store.display_image || getCategoryFallbackImage(store.category, store, index)),
         reels: (reelsByMerchantId.get(String(store.id)) || []).filter(isMerchantVideo)
       }));
-      const openStores = searchableSupabaseStores.filter(store => store.is_open_today !== false);
+      // Posts and reels are global content; do not limit them by store opening status or user locality.
+      const feedStores = searchableSupabaseStores;
 
       dynamicPostsList = []; liveSupabaseStores = [];
 
-      openStores.forEach((store, index) => {
+      feedStores.forEach((store, index) => {
         const storeId = store.id;
         const storeReels = (reelsByMerchantId.get(String(storeId)) || []).filter(reel => isMerchantVideo(reel));
         const storePosts = (postsByMerchantId.get(String(storeId)) || []).filter(post => {
@@ -2080,7 +2077,7 @@ async function toggleReelLike(reelId, userId) {
             media_id: media.id || '',
             distance: store.address || "दिल्ली",
             address: store.address || "दिल्ली",
-            expires_at: media.expires_at || '',
+            expires_at: media.merchant_expiry_post || media.expires_at || '',
             isVideo: false,
             isHighDiscount: isHighDiscountMerchant(store)
           });
@@ -2162,6 +2159,11 @@ async function toggleReelLike(reelId, userId) {
       const remainingMs = expiryTimestamp - Date.now();
       let label;
       if (remainingMs <= 0) {
+        const expiredPostCard = timer.closest('.post-card');
+        if (expiredPostCard) {
+          expiredPostCard.remove();
+          return;
+        }
         label = document.documentElement.lang === 'en' ? 'Expired' : 'समय समाप्त';
       } else {
         const totalMinutes = Math.ceil(remainingMs / 60000);
@@ -2179,7 +2181,7 @@ async function toggleReelLike(reelId, userId) {
   function ensureDatabaseExpiryTimerUpdates() {
     updateDatabaseExpiryTimers();
     if (!window.__databaseExpiryTimerInterval) {
-      window.__databaseExpiryTimerInterval = setInterval(updateDatabaseExpiryTimers, 60000);
+      window.__databaseExpiryTimerInterval = setInterval(updateDatabaseExpiryTimers, 1000);
     }
   }
 
@@ -2216,9 +2218,29 @@ async function toggleReelLike(reelId, userId) {
     });
   }
 
-  function openFullPostView(mediaUrl, encodedCaption, isVideo = false) {
+  const syncedPostViewsThisSession = new Set();
+  async function syncPostViewAnalytics(merchantId, postId) {
+    const normalizedPostId = String(postId || '');
+    if (!merchantId || !normalizedPostId || syncedPostViewsThisSession.has(normalizedPostId)) return;
+    syncedPostViewsThisSession.add(normalizedPostId);
+    try {
+      const { error } = await supabaseClient.from('merchant_views').insert({
+        merchant_id: String(merchantId), post_id: normalizedPostId,
+        user_device_id: String(deviceUserId), view_count: 1
+      });
+      if (error) throw error;
+    } catch (error) {
+      syncedPostViewsThisSession.delete(normalizedPostId);
+      console.warn('Post view analytics sync failed:', error.message || error);
+    }
+  }
+
+  function openFullPostView(mediaUrl, encodedCaption, isVideo = false, encodedPostId = '', encodedMerchantId = '') {
     const caption = decodeURIComponent(encodedCaption);
     const container = document.getElementById('fullPostModalMediaContainer');
+    if (encodedPostId && encodedMerchantId) {
+      syncPostViewAnalytics(decodeURIComponent(encodedMerchantId), decodeURIComponent(encodedPostId));
+    }
     
     const closeBtnHtml = `<button onclick="closeFullPostViewModal()" class="full-post-close-btn">✕</button>`;
     
@@ -2255,10 +2277,13 @@ async function toggleReelLike(reelId, userId) {
   function sortShopsByLocality(shopsList, userCurrentLocality) {
     const targetLocality = String(userCurrentLocality || '').trim().toLocaleLowerCase('hi-IN');
     return (shopsList || []).sort((a, b) => {
+      const aMatchesSelectedArea = matchesSelectedArea(a);
+      const bMatchesSelectedArea = matchesSelectedArea(b);
+      if (aMatchesSelectedArea !== bMatchesSelectedArea) return aMatchesSelectedArea ? -1 : 1;
       const aLocality = String(a?.locality || a?.area || a?.address || '').toLocaleLowerCase('hi-IN');
       const bLocality = String(b?.locality || b?.area || b?.address || '').toLocaleLowerCase('hi-IN');
-      if (targetLocality && aLocality === targetLocality && bLocality !== targetLocality) return -1;
-      if (targetLocality && aLocality !== targetLocality && bLocality === targetLocality) return 1;
+      if (targetLocality && aLocality.includes(targetLocality) && !bLocality.includes(targetLocality)) return -1;
+      if (targetLocality && !aLocality.includes(targetLocality) && bLocality.includes(targetLocality)) return 1;
       return 0;
     });
   }
@@ -2272,7 +2297,9 @@ async function toggleReelLike(reelId, userId) {
     if (!append) {
       postsFeedSource = sortShopsByLocality((postsArray || []).filter(post => {
         const imageUrl = String(post?.post_image || post?.post_image_url || '').trim();
-        return Boolean(imageUrl) && !post.isVideo && !isMerchantVideo(post, imageUrl) && matchesSelectedArea(post);
+        const expiryTimestamp = Date.parse(post?.expires_at || post?.merchant_expiry_post || '');
+        const isNotExpired = !Number.isFinite(expiryTimestamp) || expiryTimestamp > Date.now();
+        return Boolean(imageUrl) && isNotExpired && !post.isVideo && !isMerchantVideo(post, imageUrl);
       }), userCurrentLocality);
       renderedPostCount = 0;
       isFullyLoaded = false;
@@ -2325,11 +2352,11 @@ async function toggleReelLike(reelId, userId) {
             <div class="post-more-info-text" onclick="openShopInfoModalSafe('${post.storeName}', '${post.category}', '${post.address}', '${encodeURIComponent(post.caption)}', '${encodeURIComponent(post.caption)}')">More Info</div>
           </div>
           
-          <div class="post-media-box" style="position:relative;" onclick="openFullPostView('${post.post_image}', '${encodeURIComponent(post.caption)}', false)">
+          <div class="post-media-box" style="position:relative;" onclick="openFullPostView('${post.post_image}', '${encodeURIComponent(post.caption)}', false, '${encodeURIComponent(post.media_id)}', '${encodeURIComponent(post.id)}')">
             ${postExpiryTimer}
             ${mediaHtml}
           </div>
-          <div class="post-content-body" onclick="openFullPostView('${post.post_image}', '${encodeURIComponent(post.caption)}', false)">
+          <div class="post-content-body" onclick="openFullPostView('${post.post_image}', '${encodeURIComponent(post.caption)}', false, '${encodeURIComponent(post.media_id)}', '${encodeURIComponent(post.id)}')">
             <div style="font-size:13px; font-weight:700; color:#1F2937; word-break:break-word; white-space:pre-wrap; line-height:1.4;">${post.caption}</div>
           </div>
           <div style="display:flex; justify-content:flex-end; padding:0 16px 12px;">
@@ -2629,7 +2656,7 @@ async function toggleReelLike(reelId, userId) {
     const searchMode = Boolean(query);
     const sourceStores = searchMode ? searchableSupabaseStores : liveSupabaseStores;
     let results = sortShopsByLocality((sourceStores || []).filter(store =>
-      matchesMerchantCategory(store) && (searchMode ? matchesMerchantSearch(store, query) : matchesSelectedArea(store))
+      matchesMerchantCategory(store) && (searchMode ? matchesMerchantSearch(store, query) : true)
     ), userCurrentLocality);
     if (searchMode && results.length === 0) {
       cachedMatchedStores = [];
@@ -2710,8 +2737,7 @@ async function toggleReelLike(reelId, userId) {
 
   function renderDynamicStores(storesArray, showAllSearchResults = false, appendOnly = false) {
     const container = document.getElementById('dynamicStoresContainer');
-    storesArray = sortShopsByLocality((storesArray || []).filter(store =>
-      showAllSearchResults || matchesSelectedArea(store)), userCurrentLocality);
+    storesArray = sortShopsByLocality(storesArray || [], userCurrentLocality);
     if (!container.dataset.merchantClickHandlersAttached) {
       container.addEventListener('click', (event) => {
         const actionElement = event.target.closest('[data-card-action]');
@@ -3106,7 +3132,7 @@ async function toggleReelLike(reelId, userId) {
         createdAt: mediaCreatedAt(reel),
         avatar: store?.avatar_url || store?.profile_image || store?.display_image || getCategoryFallbackImage(store?.category, store, index),
         location: compactReelLocation(store?.address || store?.location || store?.city || 'दिल्ली'),
-        distance: compactReelLocation(store?.distance_text || store?.distance || store?.address || 'लोकेशन देखें'), lat: lat == null ? '' : String(lat), lon: lon == null ? '' : String(lon), expiresAt: reel.expires_at || '' });
+        distance: compactReelLocation(store?.distance_text || store?.distance || store?.address || 'लोकेशन देखें'), lat: lat == null ? '' : String(lat), lon: lon == null ? '' : String(lon), expiresAt: reel.merchant_expiry_reel || reel.expires_at || '' });
     });
     const storesById = new Map((searchableSupabaseStores || []).map(store => [String(store.id), store]));
     dedicatedReelMediaAppendCache.forEach(reel => {
@@ -3222,6 +3248,11 @@ async function toggleReelLike(reelId, userId) {
     } catch (error) {
       console.warn('Reel view analytics sync failed:', error.message || error);
     }
+  }
+
+  function markReelViewComplete(item) {
+    if (!item?.isVideo) return;
+    syncReelViewAnalytics(item);
   }
 
   async function syncReelMapClick(merchantId, reelId) {
@@ -3512,8 +3543,15 @@ async function toggleReelLike(reelId, userId) {
           dedicatedActiveReelElement = reelItem;
           reelItem.classList.add('reel-media-playing');
           markReelAsWatched(item);
-          syncReelViewAnalytics(item);
           if (video) {
+            if (!video.dataset.completionViewTrackingAttached) {
+              video.dataset.completionViewTrackingAttached = 'true';
+              video.addEventListener('timeupdate', () => {
+                if (video.duration && video.currentTime / video.duration >= 0.95) {
+                  markReelViewComplete(reelsFeedItems[Number(reelItem.dataset.reelIndex)]);
+                }
+              });
+            }
             if (!video.getAttribute('src') && item?.mediaUrl) {
               video.setAttribute('src', item.mediaUrl);
               video.load();
@@ -3982,6 +4020,7 @@ async function toggleReelLike(reelId, userId) {
     viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
     document.body.classList.add('forced-mobile-view');
     document.body.classList.remove('forced-desktop-view');
+    updateDeviceViewModeToggle();
   }
   function setDesktopMode() {
     let viewportMeta = document.querySelector('meta[name="viewport"]');
@@ -3993,6 +4032,20 @@ async function toggleReelLike(reelId, userId) {
     viewportMeta.content = 'width=1200, initial-scale=0.5';
     document.body.classList.add('forced-desktop-view');
     document.body.classList.remove('forced-mobile-view');
+    updateDeviceViewModeToggle();
+  }
+  function updateDeviceViewModeToggle() {
+    const desktopActive = document.body.classList.contains('forced-desktop-view');
+    const icon = document.getElementById('deviceViewModeIcon');
+    const label = document.getElementById('deviceViewModeLabel');
+    const toggle = document.getElementById('deviceViewModeToggle');
+    if (icon) icon.textContent = desktopActive ? '📱' : '🖥️';
+    if (label) label.textContent = desktopActive ? 'मोबाइल व्यू पर स्विच करें / Switch to Mobile View' : 'डेस्कटॉप व्यू पर स्विच करें / Switch to Desktop View';
+    if (toggle) toggle.setAttribute('aria-label', label?.textContent || 'व्यू मोड बदलें / Toggle view mode');
+  }
+  function toggleDeviceViewMode() {
+    if (document.body.classList.contains('forced-desktop-view')) setMobileMode();
+    else setDesktopMode();
   }
   function renderSavedDealsList(list) {
     const container = document.getElementById('savedReelsListContainer');
