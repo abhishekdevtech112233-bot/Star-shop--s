@@ -736,18 +736,14 @@
   </style>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-  <script>
-    // APK या PWA में पुराना सर्विस वर्कर हटाकर नया वर्जन फोर्सफुली लोड करने का लॉजिक
+    <script>
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) {
-          registration.unregister().then(function(boolean) {
-            console.log("Old Service Worker unregistered:", boolean);
-          });
-        }
+      window.addEventListener('load', function () {
+        navigator.serviceWorker.register('./sw.js').catch(function () {});
       });
     }
-  </script>
+    </script>
+    
 </head>
 <body>
 
