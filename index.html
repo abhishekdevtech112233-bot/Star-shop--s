@@ -1151,73 +1151,98 @@
   const SUPABASE_URL = "https://fzerbvhdaqifaeabdjkj.supabase.co";
   const SUPABASE_ANON_KEY = "sb_publishable_ajo-GdO4PcqhQDTcde9m7w_Ib6kzaVM";
   const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-// किसी रील के कुल लाइक्स लाने और चेक करने के लिए कि यूजर ने लाइक किया है या नहीं
+function normalizeReelId(value) {
+  const raw = String(value ?? '').trim();
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  return uuidPattern.test(raw) ? raw.toLowerCase() : null;
+}
+
+function resolveLikesUserId(userId) {
+  const candidates = [userId, currentUserPhone, deviceUserId];
+  for (const candidate of candidates) {
+    const resolved = String(candidate ?? '').trim();
+    if (resolved) return resolved;
+  }
+  return null;
+}
+
+// किसी रील के कुल लाइक्स और मौजूदा यूज़र की लाइक स्थिति पढ़ें।
 async function getReelLikesInfo(reelId, userId) {
+  const normalizedReelId = normalizeReelId(reelId);
+  const normalizedUserId = resolveLikesUserId(userId);
+  if (!normalizedReelId) {
+    console.error('Likes fetch skipped: invalid UUID reel_id:', reelId);
+    return { likeCount: 0, userLiked: false, error: 'Invalid reel_id' };
+  }
   try {
-    // कुल लाइक्स की गिनती के लिए
     const { count, error: countError } = await supabaseClient
       .from('likes')
-      .select('*', { count: 'exact', head: true })
-      .eq('reel_id', reelId);
-
+      .select('id', { count: 'exact', head: true })
+      .eq('reel_id', normalizedReelId);
     if (countError) throw countError;
 
-    // यह चेक करने के लिए कि क्या करंट यूजर ने इसे लाइक किया है
     let userLiked = false;
-    if (userId) {
-      const { data: userLikeData, error: userError } = await supabaseClient
+    if (normalizedUserId) {
+      const { data, error } = await supabaseClient
         .from('likes')
         .select('id')
-        .eq('reel_id', reelId)
-        .eq('user_id', userId)
+        .eq('reel_id', normalizedReelId)
+        .eq('user_id', normalizedUserId)
+        .limit(1)
         .maybeSingle();
-
-      if (!userError && userLikeData) {
-        userLiked = true;
-      }
+      if (error) throw error;
+      userLiked = Boolean(data);
     }
-
     return { likeCount: count || 0, userLiked };
   } catch (err) {
-    console.error("Likes fetch error:", err.message);
-    return { likeCount: 0, userLiked: false };
+    console.error('Likes fetch failed (likes table):', err.message || err);
+    return { likeCount: 0, userLiked: false, error: err.message || String(err) };
   }
 }
 
-// लाइक जोड़ने या हटाने (Toggle) के लिए फंक्शन
+// likes(reel_id uuid/text, user_id text) में सुरक्षित Like/Unlike toggle करें।
 async function toggleReelLike(reelId, userId) {
+  const normalizedReelId = normalizeReelId(reelId);
+  const normalizedUserId = resolveLikesUserId(userId);
+  if (!normalizedReelId) {
+    console.error('Like toggle skipped: invalid UUID reel_id:', reelId);
+    return null;
+  }
+  if (!normalizedUserId) {
+    console.error('Like toggle skipped: no user_id or guest device ID is available.');
+    return null;
+  }
   try {
-    // पहले चेक करें कि क्या यूजर ने पहले से लाइक किया है
-    const { data: existingLike, error: checkError } = await supabaseClient
-      .from('likes')
-      .select('id')
-      .eq('reel_id', reelId)
-      .eq('user_id', userId)
-      .maybeSingle();
-
+      const { data: existingLike, error: checkError } = await supabaseClient
+        .from('likes')
+        .select('id')
+        .eq('reel_id', normalizedReelId)
+        .eq('user_id', normalizedUserId)
+        .limit(1)
+        .maybeSingle();
     if (checkError) throw checkError;
 
     if (existingLike) {
-      // अगर पहले से लाइक है, तो उसे हटा दें (Unlike)
-      const { error: deleteError } = await supabaseClient
+      const { error } = await supabaseClient
         .from('likes')
         .delete()
-        .eq('reel_id', reelId)
-        .eq('user_id', userId);
-
-      if (deleteError) throw deleteError;
+        .eq('reel_id', normalizedReelId)
+        .eq('user_id', normalizedUserId);
+      if (error) throw error;
       return { liked: false };
-    } else {
-      // अगर लाइक नहीं है, तो नया रिकॉर्ड जोड़ें (Like)
-      const { error: insertError } = await supabaseClient
-        .from('likes')
-        .insert([{ reel_id: reelId, user_id: userId }]);
-
-      if (insertError) throw insertError;
-      return { liked: true };
     }
+
+    const { error } = await supabaseClient.from('likes').insert([{
+      reel_id: normalizedReelId,
+      user_id: normalizedUserId
+    }]);
+    if (error) throw error;
+    return { liked: true };
   } catch (err) {
-    console.error("Toggle like error:", err.message);
+    console.error('Like toggle failed (likes table):', err.message || err, {
+      reel_id: normalizedReelId,
+      user_id: normalizedUserId
+    });
     return null;
   }
 }
@@ -1612,6 +1637,7 @@ async function toggleReelLike(reelId, userId) {
           const button = document.getElementById('areaScanButton');
           if (status) status.textContent = 'लोकेशन अनुमति नहीं मिली। ब्राउज़र सेटिंग बदलें या ऊपर एरिया लिखें।';
           if (button) { button.disabled = false; button.textContent = 'स्कैन'; }
+          setAreaSelectionVisible(true);
           if (gpsScanInterval) { clearInterval(gpsScanInterval); gpsScanInterval = null; }
           gpsScanGeneration++;
           const resolve = gpsScanResolver;
@@ -1620,7 +1646,10 @@ async function toggleReelLike(reelId, userId) {
           if (resolve) resolve(false);
         } else {
           const status = document.getElementById('gpsScanStatusText');
-          if (status) status.textContent = 'लोकेशन खोजी जा रही है…';
+          const button = document.getElementById('areaScanButton');
+          if (status) status.textContent = 'लोकेशन नहीं मिली—GPS चालू रखें, अनुमति जाँचें; फिर से कोशिश जारी है…';
+          if (button) { button.disabled = false; button.textContent = 'फिर कोशिश करें'; }
+          setAreaSelectionVisible(true);
         }
         // Timeout/unavailable positions retry in the background while this same dialog stays open.
       }, { enableHighAccuracy: true, timeout: 3000, maximumAge: 0 });
@@ -2218,34 +2247,26 @@ async function toggleReelLike(reelId, userId) {
     });
   }
 
-  const syncedPostViewsThisSession = new Set();
   async function syncPostViewAnalytics(merchantId, postId) {
     const normalizedPostId = String(postId || '');
-    if (!merchantId || !normalizedPostId || syncedPostViewsThisSession.has(normalizedPostId)) return;
-    syncedPostViewsThisSession.add(normalizedPostId);
-    try {
-      const { error } = await supabaseClient.from('merchant_views').insert({
-        merchant_id: String(merchantId), post_id: normalizedPostId,
-        user_device_id: String(deviceUserId), view_count: 1
-      });
-      if (error) throw error;
-    } catch (error) {
-      syncedPostViewsThisSession.delete(normalizedPostId);
-      console.warn('Post view analytics sync failed:', error.message || error);
-    }
+    if (!merchantId || !normalizedPostId) return;
+    await incrementItemViewById(merchantId, normalizedPostId, 'post');
   }
 
   function openFullPostView(mediaUrl, encodedCaption, isVideo = false, encodedPostId = '', encodedMerchantId = '') {
     const caption = decodeURIComponent(encodedCaption);
     const container = document.getElementById('fullPostModalMediaContainer');
-    if (encodedPostId && encodedMerchantId) {
+    const postId = encodedPostId ? decodeURIComponent(encodedPostId) : '';
+    const merchantId = encodedMerchantId ? decodeURIComponent(encodedMerchantId) : '';
+    if (!isVideo && postId && merchantId) {
       syncPostViewAnalytics(decodeURIComponent(encodedMerchantId), decodeURIComponent(encodedPostId));
     }
     
     const closeBtnHtml = `<button onclick="closeFullPostViewModal()" class="full-post-close-btn">✕</button>`;
     
     if(isVideo) {
-       container.innerHTML = closeBtnHtml + `<video src="${mediaUrl}" style="width: 100%; max-height: 60vh; object-fit: contain; display: block; background: #000;" controls autoplay playsinline></video>`;
+       container.innerHTML = closeBtnHtml + `<video src="${escapeReelsHtml(mediaUrl)}" data-merchant-id="${escapeReelsHtml(merchantId)}" data-media-id="${escapeReelsHtml(postId)}" data-media-type="post" style="width: 100%; max-height: 60vh; object-fit: contain; display: block; background: #000;" controls autoplay playsinline></video>`;
+       bindMediaViewTracking(container);
     } else {
        container.innerHTML = closeBtnHtml + `<img src="${mediaUrl}" style="width: 100%; max-height: 60vh; object-fit: contain; display: block;">`;
     }
@@ -2955,7 +2976,7 @@ async function toggleReelLike(reelId, userId) {
       let isVideo = isMerchantVideo(reel, vUrl);
 
       let mediaElement = isVideo 
-        ? `<video src="${vUrl}#t=0.1" preload="metadata" muted playsinline style="width:100%; height:100%; object-fit:cover; display:block; pointer-events:none;"></video>`
+        ? `<video src="${escapeReelsHtml(vUrl)}#t=0.1" data-merchant-id="${escapeReelsHtml(store.id || reel.merchant_id || '')}" data-media-id="${escapeReelsHtml(reel.id || '')}" data-media-type="reel" preload="metadata" muted playsinline style="width:100%; height:100%; object-fit:cover; display:block; pointer-events:none;"></video>`
         : `<img src="${vUrl}" style="width:100%; height:100%; object-fit:cover; display:block; pointer-events:none;" alt="Post">`;
 
       gridHtml += `
@@ -3009,7 +3030,7 @@ async function toggleReelLike(reelId, userId) {
           : '';
         if (activePostMusicAudio && activePostMusicUrl !== storyMusicUrl) stopPostMusic();
         let storyMediaElement = isStoryVideo 
-          ? `<video id="activeStoryVideo" src="${url}" autoplay ${storyMusicUrl ? 'muted' : ''} playsinline controlslist="nodownload" disablepictureinpicture></video>
+          ? `<video id="activeStoryVideo" src="${escapeReelsHtml(url)}" data-merchant-id="${escapeReelsHtml(store.id || r.merchant_id || '')}" data-media-id="${escapeReelsHtml(r.id || '')}" data-media-type="reel" autoplay ${storyMusicUrl ? 'muted' : ''} playsinline controlslist="nodownload" disablepictureinpicture></video>
              <button class="story-water-play-btn" id="storyPlayPauseBtn" onclick="event.stopPropagation(); toggleStoryPlayPause()">${isGloballyPlaying ? '⏸ पॉज़' : '▶ प्ले'}</button>`
           : `<img id="activeStoryImage" src="${url}" style="width:100%; max-height:320px; object-fit:contain; background:#000;">`;
 
@@ -3020,6 +3041,7 @@ async function toggleReelLike(reelId, userId) {
             ${storyMediaElement}
             ${storyMusicButton}
           </div>`;
+        bindMediaViewTracking(wrapperContainer);
         const renderedMusicButton = wrapperContainer.querySelector(".story-music-btn");
         if (renderedMusicButton && activePostMusicAudio && activePostMusicUrl === storyMusicUrl && !activePostMusicAudio.paused) {
           activePostMusicButton = renderedMusicButton;
@@ -3228,17 +3250,52 @@ async function toggleReelLike(reelId, userId) {
     return [...orderedItems.slice(lastIndex + 1), ...orderedItems.slice(0, lastIndex + 1)];
   }
 
-  const syncedReelViewsThisSession = new Set();
+  const trackedMediaViews = new Set();
   const reelJourneyRowsByKey = new Map();
+  async function incrementItemViewById(merchantId, mediaId, mediaType = 'reel') {
+    if (!supabaseClient || !merchantId || !mediaId) return false;
+    const normalizedType = mediaType === 'post' ? 'post' : 'reel';
+    const viewKey = `${String(merchantId)}_${normalizedType}_${String(mediaId)}`;
+    if (trackedMediaViews.has(viewKey)) return false;
+    trackedMediaViews.add(viewKey);
+    try {
+      const { error } = await supabaseClient.rpc('increment_media_item_view', {
+        p_merchant_id: merchantId, p_media_id: String(mediaId), p_media_type: normalizedType
+      });
+      if (error) throw error;
+      return true;
+    } catch (error) {
+      trackedMediaViews.delete(viewKey);
+      console.error('View increment RPC error:', error.message || error);
+      return false;
+    }
+  }
+
+  function bindMediaViewTracking(root = document) {
+    root.querySelectorAll('video[data-merchant-id][data-media-id]').forEach(videoEl => {
+      if (videoEl.dataset.mediaViewBound === '1') return;
+      videoEl.dataset.mediaViewBound = '1';
+      videoEl.addEventListener('ended', () => {
+        const mediaType = videoEl.getAttribute('data-media-type') || 'reel';
+        const reelElement = mediaType === 'reel' ? videoEl.closest('.reel-item') : null;
+        const item = reelElement ? reelsFeedItems[Number(reelElement.dataset.reelIndex)] : null;
+        if (item) {
+          syncReelViewAnalytics(item);
+          videoEl.currentTime = 0;
+          videoEl.play().catch(error => console.log('Reel replay restricted:', error));
+        } else {
+          incrementItemViewById(videoEl.getAttribute('data-merchant-id'), videoEl.getAttribute('data-media-id'), mediaType);
+        }
+      });
+    });
+  }
+
   async function syncReelViewAnalytics(item) {
-    if (!item?.reelId || !item?.id || syncedReelViewsThisSession.has(String(item.reelId))) return;
-    syncedReelViewsThisSession.add(String(item.reelId));
+    if (!item?.reelId || !item?.id) return;
+    const recorded = await incrementItemViewById(item.id, item.reelId, 'reel');
+    if (!recorded) return;
     const now = new Date().toISOString();
     try {
-      const viewResult = await supabaseClient.from('merchant_views').insert({
-        merchant_id: item.id, reel_id: item.reelId, user_device_id: String(deviceUserId), view_count: 1
-      });
-      if (viewResult.error) throw viewResult.error;
       const journeyResult = await supabaseClient.from('merchant_footprint_analytics').insert({
         merchant_id: item.id, reel_id: item.reelId, user_device_id: String(deviceUserId),
         watched_at: now, map_clicked: false, conversion_status: 'viewed'
@@ -3313,7 +3370,7 @@ async function toggleReelLike(reelId, userId) {
 
   function buildDedicatedReelMarkup(item, index) {
     const saved = savedReelsList.some(savedItem => savedItem.mediaUrl === item.mediaUrl || (!savedItem.mediaUrl && savedItem.store === item.storeName && savedItem.offer === item.discount));
-    const media = item.isVideo ? `<video src="${escapeReelsHtml(item.mediaUrl)}" preload="${index < 2 ? 'auto' : 'metadata'}" playsinline autoplay muted loop></video>` : `<img src="${escapeReelsHtml(item.mediaUrl)}" alt="${escapeReelsHtml(item.storeName)}" loading="${index < 3 ? 'eager' : 'lazy'}">`;
+    const media = item.isVideo ? `<video src="${escapeReelsHtml(item.mediaUrl)}" data-merchant-id="${escapeReelsHtml(item.id)}" data-media-id="${escapeReelsHtml(item.reelId)}" data-media-type="reel" preload="${index < 2 ? 'auto' : 'metadata'}" playsinline autoplay muted></video>` : `<img src="${escapeReelsHtml(item.mediaUrl)}" alt="${escapeReelsHtml(item.storeName)}" loading="${index < 3 ? 'eager' : 'lazy'}">`;
     return `<div class="reel-item" data-reel-index="${index}" onclick="handleScreenTap(event)">${media}
       <div class="reel-top-controls ui-element"><div class="reel-search-cluster"><button class="top-icon-btn search-trigger" onclick="openSearchFilter(event)" title="सर्च करें" aria-label="सर्च करें">${reelSketchIcon('search')}</button><div class="reel-inline-search"><input type="search" enterkeyhint="search" value="${escapeReelsHtml(activeReelsSearchQuery)}" placeholder="दुकान या लोकेशन खोजें" onkeydown="submitInlineReelsSearch(event, this)" aria-label="रील्स सर्च"><span class="search-submit-icon">${reelSketchIcon('search')}</span></div></div>${buildDatabaseExpiryTimerMarkup(item.expiresAt)}</div>
       <div class="reel-actions-bar ui-element"><button class="action-btn star-rating-btn ${isReelRated(item) ? 'rated' : ''}" onclick="rateWithStyle(this, event)" title="रेटिंग दें" aria-label="रेटिंग दें"><span class="star-icon-wrapper">${reelSketchIcon('star')}</span><span class="rating-status"><span class="count total-like-count" style="${item.ratingCount > 0 ? '' : 'display:none;'}">${formatCompactCount(item.ratingCount)}</span></span><span class="label-text">रेटिंग</span></button><button class="action-btn" onclick="refreshReelContent(event)" title="रील्स रिफ्रेश करें" aria-label="रील्स रिफ्रेश करें">${reelSketchIcon('refresh')}<span class="label-text">रीफ्रेश</span></button><button class="action-btn" onclick="shareReelContent(event)" title="रील्स शेयर करें" aria-label="रील्स शेयर करें">${reelSketchIcon('share')}<span class="label-text">शेयर</span></button><button class="action-btn lock-save-btn ${saved ? 'is-saved locked' : ''}" onclick="toggleLockSave(this, event)" title="सुरक्षित करें" aria-label="सुरक्षित करें"><span class="lock-icon">${reelSketchIcon(saved ? 'lock' : 'unlock')}</span><span class="label-text">सुरक्षित</span></button></div>
@@ -3544,14 +3601,6 @@ async function toggleReelLike(reelId, userId) {
           reelItem.classList.add('reel-media-playing');
           markReelAsWatched(item);
           if (video) {
-            if (!video.dataset.completionViewTrackingAttached) {
-              video.dataset.completionViewTrackingAttached = 'true';
-              video.addEventListener('timeupdate', () => {
-                if (video.duration && video.currentTime / video.duration >= 0.95) {
-                  markReelViewComplete(reelsFeedItems[Number(reelItem.dataset.reelIndex)]);
-                }
-              });
-            }
             if (!video.getAttribute('src') && item?.mediaUrl) {
               video.setAttribute('src', item.mediaUrl);
               video.load();
@@ -3571,6 +3620,7 @@ async function toggleReelLike(reelId, userId) {
         }
       });
     }, { root: container, threshold: [0.6] });
+    bindMediaViewTracking(container);
     container.querySelectorAll('.reel-item').forEach(reel => {
       dedicatedReelObserver.observe(reel);
       const video = reel.querySelector('video');
@@ -3771,52 +3821,62 @@ async function toggleReelLike(reelId, userId) {
     try { return JSON.parse(localStorage.getItem(name) || '{}') || {}; } catch (_) { return {}; }
   }
   function isReelRated(item) { return Boolean(readReelInteractionMap('starshops_rated_reels')[reelInteractionKey(item)]); }
-  async function persistReelMetric(item, field, value) {
-    if (!item?.reelId || !supabaseClient?.from) return;
-    try {
-      // चूंकि लाइक्स के लिए अलग 'likes' टेबल है, इसलिए reels टेबल को patch करने की जरूरत नहीं है
-      if (field === 'like_count' || field === 'rating_count') {
-        console.log(`Reel metric ${field} handled locally for reel:`, item.reelId);
-        return;
-      }
-      const { error } = await supabaseClient.from('merchant_reels').update({ [field]: value }).eq('id', item.reelId);
-      if (error) console.warn(`Supabase ${field} update failed:`, error.message || error);
-    } catch (error) { console.warn(`Supabase ${field} update failed:`, error); }
-  }
-  async function toggleDedicatedReelLike(item, reelElement) {
-    if (!item?.reelId || !currentUserPhone) return;
+  async function toggleDedicatedReelLike(item, reelElement, buttonElement = null) {
+    if (!item?.reelId) {
+      console.error('Like toggle skipped: current reel has no media ID.');
+      return false;
+    }
+    const userId = resolveLikesUserId(currentUserPhone);
+    if (!userId) {
+      console.error('Like toggle skipped: neither a user ID nor guest device ID is available.');
+      return false;
+    }
+    if (reelElement?.dataset.likeTogglePending === '1') return false;
+    if (reelElement) reelElement.dataset.likeTogglePending = '1';
     const key = reelInteractionKey(item);
-    const result = await toggleReelLike(item.reelId, currentUserPhone);
-    if (!result) return;
-    const likesInfo = await getReelLikesInfo(item.reelId, currentUserPhone);
-    item.likeCount = likesInfo.likeCount;
-    const likes = readReelInteractionMap('starshops_liked_reels');
-    likes[key] = result.liked;
-    localStorage.setItem('starshops_liked_reels', JSON.stringify(likes));
-    reelElement?.classList.toggle('reel-is-liked', likesInfo.userLiked);
+    try {
+      const result = await toggleReelLike(item.reelId, userId);
+      if (!result) return false;
+      const likesInfo = await getReelLikesInfo(item.reelId, userId);
+      if (likesInfo.error) {
+        console.error('Like saved, but refreshed likes state could not be loaded:', likesInfo.error);
+        return false;
+      }
+
+      item.likeCount = likesInfo.likeCount;
+      item.ratingCount = likesInfo.likeCount;
+      const likes = readReelInteractionMap('starshops_liked_reels');
+      likes[key] = likesInfo.userLiked;
+      localStorage.setItem('starshops_liked_reels', JSON.stringify(likes));
+      const ratings = readReelInteractionMap('starshops_rated_reels');
+      ratings[key] = likesInfo.userLiked;
+      localStorage.setItem('starshops_rated_reels', JSON.stringify(ratings));
+
+      const starButton = buttonElement || reelElement?.querySelector('.star-rating-btn');
+      const countElement = starButton?.querySelector('.total-like-count');
+      if (countElement) {
+        countElement.textContent = formatCompactCount(likesInfo.likeCount);
+        countElement.style.display = likesInfo.likeCount > 0 ? 'inline' : 'none';
+      }
+      starButton?.classList.toggle('rated', likesInfo.userLiked);
+      if (starButton) toggleStar(starButton, null, likesInfo.userLiked);
+      reelElement?.classList.toggle('reel-is-liked', likesInfo.userLiked);
+      return true;
+    } finally {
+      if (reelElement) delete reelElement.dataset.likeTogglePending;
+    }
   }
-  function rateWithStyle(button, event) {
+  async function rateWithStyle(button, event) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
     if (!button) return;
     const item = getReelItemFromEvent(event);
-    const key = reelInteractionKey(item);
-    const ratings = readReelInteractionMap('starshops_rated_reels');
-    const rated = !Boolean(ratings[key]);
-    ratings[key] = rated;
-    localStorage.setItem('starshops_rated_reels', JSON.stringify(ratings));
-    if (item) item.ratingCount = Math.max(0, Number(item.ratingCount || 0) + (rated ? 1 : -1));
-    const totalCount = button.querySelector('.total-like-count');
-    if (totalCount) {
-      totalCount.textContent = formatCompactCount(item?.ratingCount || 0);
-      totalCount.style.display = item?.ratingCount > 0 ? 'inline' : 'none';
-    }
-    button.classList.toggle('rated', rated);
-    toggleStar(button, null, rated);
+    if (!item) return;
+    const liked = await toggleDedicatedReelLike(item, button.closest('.reel-item'), button);
+    if (!liked) return;
     const star = button.querySelector('.star-icon-wrapper');
     star?.classList.remove('rating-flash');
     requestAnimationFrame(() => star?.classList.add('rating-flash'));
-    if (item) persistReelMetric(item, 'rating_count', item.ratingCount);
-    console.log('Star rated successfully with a pure-white flash!');
+    console.log('Reel like saved to Supabase; UI refreshed from likes table.');
   }
   function toggleLockSave(button, event) {
     if (event) { event.preventDefault(); event.stopPropagation(); }
